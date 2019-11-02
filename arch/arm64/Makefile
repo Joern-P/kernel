@@ -172,6 +172,60 @@ endif
 
 LOGO := $(notdir $(wildcard $(srctree)/logo.bmp))
 LOGO_KERNEL := $(notdir $(wildcard $(srctree)/logo_kernel.bmp))
+<<<<<<< HEAD
+=======
+
+PHONY += rklogo
+rklogo: $(LOGO) $(LOGO_KERNEL)
+	$(Q) if [ -f $(srctree)/$(LOGO) -a "$(srctree)" != "$(objtree)" ]; then cp -av $(srctree)/$(LOGO) $(objtree)/; fi
+	$(Q) if [ -f $(srctree)/$(LOGO_KERNEL) -a "$(srctree)" != "$(objtree)" ]; then cp -av $(srctree)/$(LOGO_KERNEL) $(objtree)/; fi
+
+RAMDISK_IMG := $(notdir $(wildcard $(objtree)/ramdisk.img))
+make_boot_img := \
+	$(srctree)/scripts/mkbootimg \
+		--kernel $(objtree)/arch/arm64/boot/Image \
+		$(if $(RAMDISK_IMG),--ramdisk $(objtree)/ramdisk.img) \
+		--second resource.img \
+		-o boot.img && \
+	echo '  Image:  boot.img (with Image $(if $(RAMDISK_IMG),'ramdisk.img ')resource.img) is ready'; \
+	$(srctree)/scripts/mkbootimg \
+		--kernel $(objtree)/arch/arm64/boot/Image.lz4 \
+		$(if $(RAMDISK_IMG),--ramdisk $(objtree)/ramdisk.img) \
+		--second resource.img \
+		-o zboot.img && \
+	echo '  Image:  zboot.img (with Image.lz4 $(if $(RAMDISK_IMG),'ramdisk.img ')resource.img) is ready'
+
+repack_boot_img := \
+	$(srctree)/scripts/repack-bootimg \
+		--boot_img $(BOOT_IMG) --out out \
+		--kernel $(objtree)/arch/arm64/boot/Image \
+		--second resource.img \
+		-o boot.img && \
+	echo '  Image:  boot.img ($(BOOT_IMG) + Image + resource.img) is ready'; \
+	$(srctree)/scripts/repack-bootimg \
+		--boot_img $(BOOT_IMG) --out out \
+		--kernel $(objtree)/arch/arm64/boot/Image.lz4 \
+		--second resource.img \
+		-o zboot.img && \
+	echo '  Image:  zboot.img ($(BOOT_IMG) + Image.lz4 + resource.img) is ready'
+>>>>>>> 644cc6b5dd0d91ffbf845df301836da69fc8ef83
+
+ifeq ($(CONFIG_MACH_NANOPI4),y)
+DTBS := rockchip/rk3399-nanopi4-rev*.dtb
+
+PHONY += nanopi4-images nanopi4-bootimg
+nanopi4-images: dtbs kernel.img rklogo
+	$(Q)scripts/resource_tool --dtbname $(objtree)/arch/arm64/boot/dts/$(DTBS) $(LOGO) $(LOGO_KERNEL)
+	@echo '  Image:  resource.img (with $(DTBS) $(LOGO) $(LOGO_KERNEL)) is ready'
+
+nanopi4-bootimg: nanopi4-images
+	$(Q) if [ -f "$(BOOT_IMG)" -a -x $(srctree)/scripts/repack-bootimg ]; then \
+		$(repack_boot_img); \
+	elif [ -x $(srctree)/scripts/mkbootimg ]; then \
+		$(make_boot_img); \
+	fi
+
+endif
 
 %.img: rockchip/%.dtb kernel.img $(LOGO) $(LOGO_KERNEL)
 	$(Q)$(srctree)/scripts/mkimg --dtb $*.dtb

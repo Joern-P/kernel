@@ -234,13 +234,6 @@ static int rockchip_drm_bandwidth_atomic_check(struct drm_device *dev,
 
 	*bandwidth = 0;
 	*plane_num = 0;
-	for_each_crtc_in_state(state, crtc, crtc_state, i) {
-		funcs = priv->crtc_funcs[drm_crtc_index(crtc)];
-
-		if (funcs && funcs->bandwidth)
-			*bandwidth += funcs->bandwidth(crtc, crtc_state,
-						       plane_num);
-	}
 
 	/*
 	 * Check ddr frequency support here here.
@@ -251,9 +244,18 @@ static int rockchip_drm_bandwidth_atomic_check(struct drm_device *dev,
 			priv->devfreq = NULL;
 	}
 
-	if (priv->devfreq)
+	if (priv->devfreq) {
+		for_each_crtc_in_state(state, crtc, crtc_state, i) {
+			funcs = priv->crtc_funcs[drm_crtc_index(crtc)];
+
+			if (funcs && funcs->bandwidth)
+				*bandwidth += funcs->bandwidth(crtc, crtc_state,
+							       plane_num);
+		}
+
 		ret = rockchip_dmcfreq_vop_bandwidth_request(priv->devfreq,
 							     *bandwidth);
+	}
 
 	return ret;
 }
