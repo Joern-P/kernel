@@ -566,9 +566,7 @@ static void option_instat_callback(struct urb *urb);
 
 
 static const struct usb_device_id option_ids[] = {
-<<<<<<< HEAD
-	{ USB_DEVICE(0x1286, 0x4e3c) },
-=======
+
 #if 1 //Added by Quectel
 	{ USB_DEVICE(0x05C6, 0x9090) }, /* Quectel UC15 */
 	{ USB_DEVICE(0x05C6, 0x9003) }, /* Quectel UC20 */
@@ -581,7 +579,6 @@ static const struct usb_device_id option_ids[] = {
 	{ USB_DEVICE(0x2C7C, 0x0296) }, /* Quectel BG96 */
 	{ USB_DEVICE(0x2C7C, 0x0435) }, /* Quectel AG35 */
 #endif
->>>>>>> 644cc6b5dd0d91ffbf845df301836da69fc8ef83
 	{ USB_DEVICE(OPTION_VENDOR_ID, OPTION_PRODUCT_COLT) },
 	{ USB_DEVICE(OPTION_VENDOR_ID, OPTION_PRODUCT_RICOLA) },
 	{ USB_DEVICE(OPTION_VENDOR_ID, OPTION_PRODUCT_RICOLA_LIGHT) },

@@ -506,13 +506,7 @@ static struct urb *usb_wwan_setup_urb(struct usb_serial_port *port,
 			  usb_sndbulkpipe(serial->dev, endpoint) | dir,
 			  buf, len, callback, ctx);
 
-<<<<<<< HEAD
-	if (dir == USB_DIR_OUT) {
-		if ((desc->idVendor == cpu_to_le16(0x1286) &&
-		     desc->idProduct == cpu_to_le16(0x4e3c)))
-			urb->transfer_flags |= URB_ZERO_PACKET;
-	}
-=======
+
 #if 1 //Added by Quectel for Zero Packet
 	if (dir == USB_DIR_OUT) {
 		struct usb_device_descriptor *desc = &serial->dev->descriptor;
@@ -527,7 +521,6 @@ static struct urb *usb_wwan_setup_urb(struct usb_serial_port *port,
 	}
 #endif
 
->>>>>>> 644cc6b5dd0d91ffbf845df301836da69fc8ef83
 	return urb;
 }
 

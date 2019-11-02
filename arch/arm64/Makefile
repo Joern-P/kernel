@@ -172,8 +172,6 @@ endif
 
 LOGO := $(notdir $(wildcard $(srctree)/logo.bmp))
 LOGO_KERNEL := $(notdir $(wildcard $(srctree)/logo_kernel.bmp))
-<<<<<<< HEAD
-=======
 
 PHONY += rklogo
 rklogo: $(LOGO) $(LOGO_KERNEL)
@@ -208,7 +206,7 @@ repack_boot_img := \
 		--second resource.img \
 		-o zboot.img && \
 	echo '  Image:  zboot.img ($(BOOT_IMG) + Image.lz4 + resource.img) is ready'
->>>>>>> 644cc6b5dd0d91ffbf845df301836da69fc8ef83
+
 
 ifeq ($(CONFIG_MACH_NANOPI4),y)
 DTBS := rockchip/rk3399-nanopi4-rev*.dtb
