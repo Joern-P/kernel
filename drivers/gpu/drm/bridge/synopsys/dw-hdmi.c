@@ -89,6 +89,7 @@ static const struct dw_hdmi_audio_tmds_n common_tmds_n_table[] = {
 	{ .tmds = 71000000, .n_32k = 4096, .n_44k1 = 7056, .n_48k = 6144, },
 	{ .tmds = 72000000, .n_32k = 4096, .n_44k1 = 5635, .n_48k = 6144, },
 	{ .tmds = 73250000, .n_32k = 4096, .n_44k1 = 14112, .n_48k = 6144, },
+	{ .tmds = 74176000, .n_32k = 11648, .n_44k1 = 17836, .n_48k = 11648, },
 	{ .tmds = 74250000, .n_32k = 4096, .n_44k1 = 6272, .n_48k = 6144, },
 	{ .tmds = 75000000, .n_32k = 4096, .n_44k1 = 5880, .n_48k = 6144, },
 	{ .tmds = 78750000, .n_32k = 4096, .n_44k1 = 5600, .n_48k = 6144, },
@@ -105,13 +106,16 @@ static const struct dw_hdmi_audio_tmds_n common_tmds_n_table[] = {
 	{ .tmds = 119000000, .n_32k = 4096, .n_44k1 = 5544, .n_48k = 6144, },
 	{ .tmds = 135000000, .n_32k = 4096, .n_44k1 = 5488, .n_48k = 6144, },
 	{ .tmds = 146250000, .n_32k = 4096, .n_44k1 = 6272, .n_48k = 6144, },
-	{ .tmds = 148500000, .n_32k = 4096, .n_44k1 = 5488, .n_48k = 6144, },
+	{ .tmds = 148352000, .n_32k = 11648, .n_44k1 = 8918, .n_48k = 5824, },
+	{ .tmds = 148500000, .n_32k = 4096, .n_44k1 = 6272, .n_48k = 6144, },
 	{ .tmds = 154000000, .n_32k = 4096, .n_44k1 = 5544, .n_48k = 6144, },
 	{ .tmds = 162000000, .n_32k = 4096, .n_44k1 = 5684, .n_48k = 6144, },
 
 	/* For 297 MHz+ HDMI spec have some other rule for setting N */
-	{ .tmds = 297000000, .n_32k = 3073, .n_44k1 = 4704, .n_48k = 5120, },
-	{ .tmds = 594000000, .n_32k = 3073, .n_44k1 = 9408, .n_48k = 10240, },
+	{ .tmds = 296703000, .n_32k = 5824, .n_44k1 = 4459, .n_48k = 5824, },
+	{ .tmds = 297000000, .n_32k = 3072, .n_44k1 = 4704, .n_48k = 5120, },
+	{ .tmds = 593407000, .n_32k = 5824, .n_44k1 = 8918, .n_48k = 5824, },
+	{ .tmds = 594000000, .n_32k = 3072, .n_44k1 = 9408, .n_48k = 6144, },
 
 	/* End of table */
 	{ .tmds = 0,         .n_32k = 0,    .n_44k1 = 0,    .n_48k = 0, },
@@ -831,6 +835,20 @@ void dw_hdmi_set_sample_rate(struct dw_hdmi *hdmi, unsigned int rate)
 }
 EXPORT_SYMBOL_GPL(dw_hdmi_set_sample_rate);
 
+static void hdmi_enable_audio_clk(struct dw_hdmi *hdmi, bool enable)
+{
+	if (enable)
+		hdmi->mc_clkdis &= ~HDMI_MC_CLKDIS_AUDCLK_DISABLE;
+	else
+		hdmi->mc_clkdis |= HDMI_MC_CLKDIS_AUDCLK_DISABLE;
+	hdmi_writeb(hdmi, hdmi->mc_clkdis, HDMI_MC_CLKDIS);
+
+	if (enable) {
+		hdmi_set_cts_n(hdmi, 0, 0);
+		hdmi_set_cts_n(hdmi, hdmi->audio_cts, hdmi->audio_n);
+	}
+}
+
 static void dw_hdmi_ahb_audio_enable(struct dw_hdmi *hdmi)
 {
 	hdmi_set_cts_n(hdmi, hdmi->audio_cts, hdmi->audio_n);
@@ -844,6 +862,12 @@ static void dw_hdmi_ahb_audio_disable(struct dw_hdmi *hdmi)
 static void dw_hdmi_i2s_audio_enable(struct dw_hdmi *hdmi)
 {
 	hdmi_set_cts_n(hdmi, hdmi->audio_cts, hdmi->audio_n);
+	hdmi_enable_audio_clk(hdmi, true);
+}
+
+static void dw_hdmi_i2s_audio_disable(struct dw_hdmi *hdmi)
+{
+	hdmi_enable_audio_clk(hdmi, false);
 }
 
 void dw_hdmi_audio_enable(struct dw_hdmi *hdmi)
@@ -1702,6 +1726,14 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	/* Initialise info frame from DRM mode */
 	drm_hdmi_avi_infoframe_from_display_mode(&frame, mode, is_hdmi2);
 
+	if (hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_out_bus_format)) {
+		frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
+		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_FULL;
+	} else {
+		frame.quantization_range = HDMI_QUANTIZATION_RANGE_LIMITED;
+		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_LIMITED;
+	}
+
 	/*
 	 * Ignore monitor selectable quantization, use quantization set
 	 * by the user
@@ -1751,6 +1783,14 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	}
 
 	frame.scan_mode = HDMI_SCAN_MODE_NONE;
+
+	if (hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_out_bus_format)) {
+		frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
+		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_FULL;
+	} else {
+		frame.quantization_range = HDMI_QUANTIZATION_RANGE_LIMITED;
+		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_LIMITED;
+	}
 
 	/*
 	 * The Designware IP uses a different byte format from standard
@@ -1916,7 +1956,7 @@ static void hdmi_config_hdr_infoframe(struct dw_hdmi *hdmi)
 		return;
 	}
 
-	hdmi_writeb(hdmi, 1, HDMI_FC_DRM_HB0);
+	hdmi_writeb(hdmi, frame.version, HDMI_FC_DRM_HB0);
 	hdmi_writeb(hdmi, frame.length, HDMI_FC_DRM_HB1);
 	hdmi_writeb(hdmi, frame.eotf, HDMI_FC_DRM_PB0);
 	hdmi_writeb(hdmi, frame.metadata_type, HDMI_FC_DRM_PB1);
@@ -2046,10 +2086,6 @@ static void hdmi_av_composer(struct dw_hdmi *hdmi,
 	inv_val |= mode->flags & DRM_MODE_FLAG_INTERLACE ?
 		HDMI_FC_INVIDCONF_IN_I_P_INTERLACED :
 		HDMI_FC_INVIDCONF_IN_I_P_PROGRESSIVE;
-
-	inv_val |= hdmi->sink_is_hdmi ?
-		HDMI_FC_INVIDCONF_DVI_MODEZ_HDMI_MODE :
-		HDMI_FC_INVIDCONF_DVI_MODEZ_DVI_MODE;
 
 	hdmi_writeb(hdmi, inv_val, HDMI_FC_INVIDCONF);
 
@@ -2183,12 +2219,6 @@ static void dw_hdmi_enable_video_path(struct dw_hdmi *hdmi)
 	else
 		hdmi_writeb(hdmi, HDMI_MC_FLOWCTRL_FEED_THROUGH_OFF_CSC_BYPASS,
 			    HDMI_MC_FLOWCTRL);
-}
-
-static void hdmi_enable_audio_clk(struct dw_hdmi *hdmi)
-{
-	hdmi->mc_clkdis &= ~HDMI_MC_CLKDIS_AUDCLK_DISABLE;
-	hdmi_writeb(hdmi, hdmi->mc_clkdis, HDMI_MC_CLKDIS);
 }
 
 /* Workaround to clear the overflow condition */
@@ -2362,12 +2392,15 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 
 		/* HDMI Initialization Step E - Configure audio */
 		hdmi_clk_regenerator_update_pixel_clock(hdmi);
-		hdmi_enable_audio_clk(hdmi);
+		hdmi_enable_audio_clk(hdmi, true);
 	}
 
 	/* not for DVI mode */
 	if (hdmi->sink_is_hdmi) {
 		dev_dbg(hdmi->dev, "%s HDMI mode\n", __func__);
+		hdmi_modb(hdmi, HDMI_FC_INVIDCONF_DVI_MODEZ_HDMI_MODE,
+			  HDMI_FC_INVIDCONF_DVI_MODEZ_HDMI_MODE,
+			  HDMI_FC_INVIDCONF);
 
 		/* HDMI Initialization Step F - Configure AVI InfoFrame */
 		hdmi_config_AVI(hdmi, mode);
@@ -2555,6 +2588,7 @@ static void dw_hdmi_bridge_nop(struct drm_bridge *bridge)
 static enum drm_connector_status
 dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 {
+	enum drm_connector_status status;
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
 
@@ -2564,7 +2598,24 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	dw_hdmi_update_phy_mask(hdmi);
 	mutex_unlock(&hdmi->mutex);
 
-	return hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
+	status = hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
+
+	if (status == connector_status_connected && hdmi->ddc) {
+		struct edid *edid = drm_get_edid(connector, hdmi->ddc);
+		if (edid) {
+			dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
+				edid->width_cm, edid->height_cm);
+
+			hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(edid);
+			hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
+			drm_mode_connector_update_edid_property(connector, edid);
+			cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
+			drm_edid_to_eld(connector, edid);
+			kfree(edid);
+		}
+	}
+
+	return status;
 }
 
 static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
@@ -2967,9 +3018,6 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
 			dw_hdmi_update_phy_mask(hdmi);
 		}
 		mutex_unlock(&hdmi->mutex);
-		if (!(phy_stat & (HDMI_PHY_RX_SENSE | HDMI_PHY_HPD)))
-			cec_notifier_set_phys_addr(hdmi->cec_notifier,
-						   CEC_PHYS_ADDR_INVALID);
 	}
 
 	check_hdmi_irq(hdmi, intr_stat, phy_int_pol);
@@ -3802,7 +3850,9 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
 		audio.write	= hdmi_writeb;
 		audio.read	= hdmi_readb;
 		audio.mod	= hdmi_modb;
+		audio.eld	= hdmi->connector.eld;
 		hdmi->enable_audio = dw_hdmi_i2s_audio_enable;
+		hdmi->disable_audio = dw_hdmi_i2s_audio_disable;
 
 		pdevinfo.name = "dw-hdmi-i2s-audio";
 		pdevinfo.data = &audio;

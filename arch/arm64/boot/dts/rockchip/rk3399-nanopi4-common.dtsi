@@ -56,6 +56,12 @@
 	model = "FriendlyElec boards based on Rockchip RK3399";
 	compatible = "friendlyelec,nanopi4",
 		   "rockchip,rk3399";
+		   
+/* first 64k(0xff8c0000~0xff8d0000) for ddr and suspend */
+	iram: sram@ff8d0000 {
+		compatible = "mmio-sram";
+		reg = <0x0 0xff8d0000 0x0 0x20000>; /* 128k */
+	};
 
 	chosen {
 		bootargs = "earlycon=uart8250,mmio32,0xff1a0000 swiotlb=1 console=ttyFIQ0 rootwait coherent_pool=1m";
@@ -77,18 +83,7 @@
 	aliases {
 		spi1 = &spi1;
 	};
-
-	fiq_debugger: fiq-debugger {
-		compatible = "rockchip,fiq-debugger";
-		rockchip,serial-id = <2>;
-		rockchip,signal-irq = <182>;
-		rockchip,wake-irq = <0>;
-		rockchip,irq-mode-enable = <1>;  /* If enable uart uses irq instead of fiq */
-		rockchip,baudrate = <1500000>;  /* Only 115200 and 1500000 */
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart2c_xfer>;
-	};
-
+	
 	xin32k: xin32k {
 		compatible = "fixed-clock";
 		clock-frequency = <32768>;
@@ -229,7 +224,7 @@
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
 		simple-audio-card,mclk-fs = <256>;
-		simple-audio-card,name = "rockchip,hdmi";
+		simple-audio-card,name = "HDMI";
 
 		simple-audio-card,cpu {
 			sound-dai = <&i2s2>;
@@ -242,7 +237,7 @@
 	spdif-sound {
 		status = "okay";
 		compatible = "simple-audio-card";
-		simple-audio-card,name = "ROCKCHIP,SPDIF";
+		simple-audio-card,name = "SPDIF";
 		simple-audio-card,cpu {
 			sound-dai = <&spdif>;
 		};
@@ -381,10 +376,10 @@
 		reset-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>; /* GPIO0_B2 */
 	};
 
-	rk_wlan: wireless-wlan {
+	rk_wlan: wireless-wlan { 
 		compatible = "wlan-platdata";
 		rockchip,grf = <&grf>;
-		wifi_chip_type = "ap6354";
+		wifi_chip_type = "ap6359sa";
 		sdio_vref = <1800>;
 		WIFI,host_wake_irq = <&gpio0 3 GPIO_ACTIVE_HIGH>; /* GPIO0_a3 */
 		status = "okay";
@@ -527,6 +522,21 @@
 	status = "okay";
 };
 
+&rga {
+    compatible = "rockchip,rga2";
+	dev_mode = <1>;
+	reg = <0x0 0xff680000 0x0 0x1000>;
+	interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH 0>;
+	clocks = <&cru ACLK_RGA>, <&cru HCLK_RGA>, <&cru SCLK_RGA_CORE>;
+	clock-names = "aclk_rga", "hclk_rga", "clk_rga";
+	power-domains = <&power RK3399_PD_RGA>;
+	status = "okay";
+};
+
+&vdec_mmu {
+	status = "okay";
+};
+
 &vpu {
 	status = "okay";
 	/* 0 means ion, 1 means drm */
@@ -539,16 +549,22 @@
 	//allocator = <0>;
 };
 
-&rga {
-	status = "disabled";
-};
-
 &display_subsystem {
 	status = "okay";
+	route {
+		route_hdmi: route-hdmi {
+			status = "okay";
+			connect = <&vopb_out_hdmi>;
+		};
+
+		route_dp: route-dp {
+			connect = <&vopl_out_dp>;
+		};
+	};
 };
 
 &edp {
-	status = "okay";
+	status = "disabled";
 	force-hpd;
 	/delete-property/ pinctrl-0;
 
@@ -569,29 +585,28 @@
 
 &route_edp {
 	status = "okay";
-	logo,mode = "center";
 };
 
 &cdn_dp {
-	status = "okay";
+	status = "disabled";
 	extcon = <&fusb0>;
 	phys = <&tcphy0_dp>;
 };
 
 &hdmi {
-	/* remove the hdmi_i2c_xfer */
+	/* remove the hdmi_cec, reused by edp_hpd */
 	pinctrl-0 = <&hdmi_cec>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	#sound-dai-cells = <0>;
 	status = "okay";
 	ddc-i2c-bus = <&i2c7>;
-	rockchip,defaultmode = <16>; /* CEA 1920x1080@60Hz */
-};
-
-&route_hdmi {
-	status = "okay";
-	logo,mode = "center";
+	rockchip,phy-table =
+		<74250000 0x8009 0x0004 0x0272>,
+		<165000000 0x802b 0x0004 0x0209>,
+		<297000000 0x8039 0x0005 0x028d>,
+		<594000000 0x8039 0x0000 0x019d>,
+		<000000000 0x0000 0x0000 0x0000>;
 };
 
 &i2c0 {
@@ -624,7 +639,6 @@
 	vdd_gpu: syr828@41 {
 		compatible = "silergy,syr828";
 		reg = <0x41>;
-		vin-supply = <&vcc3v3_sys>;
 		regulator-compatible = "fan53555-reg";
 		pinctrl-names = "default";
 		pinctrl-0 = <&vsel2_gpio>;
@@ -632,12 +646,14 @@
 		regulator-name = "vdd_gpu";
 		regulator-min-microvolt = <712500>;
 		regulator-max-microvolt = <1500000>;
+		regulator-enable-ramp-delay = <300>;
 		regulator-ramp-delay = <1000>;
 		fcs,suspend-voltage-selector = <1>;
 		regulator-always-on;
 		regulator-boot-on;
-		regulator-initial-state = <3>;
-			regulator-state-mem {
+		vin-supply = <&vcc3v3_sys>;
+		regulator-initial-mode = <1>; /* 1:force PWM 2:auto */
+		regulator-state-mem {
 			regulator-off-in-suspend;
 		};
 	};
@@ -1017,8 +1033,8 @@
 };
 
 &sdio0 {
-	clock-frequency = <150000000>;
-	clock-freq-min-max = <100000 150000000>;
+	clock-frequency = <50000000>;
+	clock-freq-min-max = <50000000 150000000>;
 	supports-sdio;
 	bus-width = <4>;
 	disable-wp;
@@ -1031,12 +1047,13 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdio0_bus4 &sdio0_cmd &sdio0_clk>;
 	sd-uhs-sdr104;
+	defer_pcie = <3500>;
 	status = "okay";
 };
 
 &sdmmc {
-	clock-frequency = <150000000>;
-	clock-freq-min-max = <100000 150000000>;
+	clock-frequency = <50000000>;
+	clock-freq-min-max = <50000000 150000000>;
 	supports-sd;
 	bus-width = <4>;
 	cap-mmc-highspeed;
@@ -1058,6 +1075,7 @@
 	rockchip,hw-tshut-polarity = <1>;
 	status = "okay";
 };
+
 
 &tcphy0 {
 	extcon = <&fusb0>;
@@ -1130,14 +1148,6 @@
 };
 
 &pinctrl {
-	edp {
-		/delete-node/ edp-hpd;
-	};
-
-	hdmi {
-		/delete-node/ hdmi-i2c-xfer;
-	};
-
 	pmic {
 		pmic_int_l: pmic-int-l {
 			rockchip,pins = <1 21 RK_FUNC_GPIO &pcfg_pull_up>;
@@ -1166,6 +1176,11 @@
 	sdio-pwrseq {
 		wifi_enable_h: wifi-enable-h {
 			rockchip,pins = <0 10 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+	wireless-wlan {
+		wifi_pwr: wifi-pwr {
+			rockchip,pins = <0 13 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 

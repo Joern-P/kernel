@@ -119,6 +119,7 @@
 			clocks = <&cru ARMCLKL>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP>;
 			dynamic-power-coefficient = <100>;
+			capacity-dmips-mhz = <485>;
 		};
 
 		cpu_l1: cpu@1 {
@@ -129,6 +130,7 @@
 			clocks = <&cru ARMCLKL>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP>;
 			dynamic-power-coefficient = <100>;
+			capacity-dmips-mhz = <485>;
 		};
 
 		cpu_l2: cpu@2 {
@@ -139,6 +141,7 @@
 			clocks = <&cru ARMCLKL>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP>;
 			dynamic-power-coefficient = <100>;
+			capacity-dmips-mhz = <485>;
 		};
 
 		cpu_l3: cpu@3 {
@@ -149,6 +152,7 @@
 			clocks = <&cru ARMCLKL>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP>;
 			dynamic-power-coefficient = <100>;
+			capacity-dmips-mhz = <485>;
 		};
 
 		cpu_b0: cpu@100 {
@@ -160,6 +164,7 @@
 			clocks = <&cru ARMCLKB>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP>;
 			dynamic-power-coefficient = <436>;
+			capacity-dmips-mhz = <1024>;
 		};
 
 		cpu_b1: cpu@101 {
@@ -170,6 +175,7 @@
 			clocks = <&cru ARMCLKB>;
 			cpu-idle-states = <&CPU_SLEEP &CLUSTER_SLEEP>;
 			dynamic-power-coefficient = <436>;
+			capacity-dmips-mhz = <1024>;
 		};
 
 		idle-states {
@@ -654,6 +660,8 @@
 	uart0: serial@ff180000 {
 		compatible = "rockchip,rk3399-uart", "snps,dw-apb-uart";
 		reg = <0x0 0xff180000 0x0 0x100>;
+		dmas = <&dmac_peri 0>, <&dmac_peri 1>;
+		dma-names = "tx", "rx";
 		clocks = <&cru SCLK_UART0>, <&cru PCLK_UART0>;
 		clock-names = "baudclk", "apb_pclk";
 		interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -667,6 +675,8 @@
 	uart1: serial@ff190000 {
 		compatible = "rockchip,rk3399-uart", "snps,dw-apb-uart";
 		reg = <0x0 0xff190000 0x0 0x100>;
+		dmas = <&dmac_peri 2>, <&dmac_peri 3>;
+		dma-names = "tx", "rx";
 		clocks = <&cru SCLK_UART1>, <&cru PCLK_UART1>;
 		clock-names = "baudclk", "apb_pclk";
 		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -680,6 +690,8 @@
 	uart2: serial@ff1a0000 {
 		compatible = "rockchip,rk3399-uart", "snps,dw-apb-uart";
 		reg = <0x0 0xff1a0000 0x0 0x100>;
+		dmas = <&dmac_peri 4>, <&dmac_peri 5>;
+		dma-names = "tx", "rx";
 		clocks = <&cru SCLK_UART2>, <&cru PCLK_UART2>;
 		clock-names = "baudclk", "apb_pclk";
 		interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -693,6 +705,8 @@
 	uart3: serial@ff1b0000 {
 		compatible = "rockchip,rk3399-uart", "snps,dw-apb-uart";
 		reg = <0x0 0xff1b0000 0x0 0x100>;
+		dmas = <&dmac_peri 6>, <&dmac_peri 7>;
+		dma-names = "tx", "rx";
 		clocks = <&cru SCLK_UART3>, <&cru PCLK_UART3>;
 		clock-names = "baudclk", "apb_pclk";
 		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -805,7 +819,7 @@
 				};
 			};
 
-			cooling-maps {
+			cooling_maps: cooling-maps {
 				map0 {
 					trip = <&target>;
 					cooling-device =
@@ -1170,6 +1184,8 @@
 	spi3: spi@ff350000 {
 		compatible = "rockchip,rk3399-spi", "rockchip,rk3066-spi";
 		reg = <0x0 0xff350000 0x0 0x1000>;
+		dmas = <&dmac_peri 16>, <&dmac_peri 17>;
+		dma-names = "tx", "rx";
 		clocks = <&pmucru SCLK_SPI3_PMU>, <&pmucru PCLK_SPI3_PMU>;
 		clock-names = "spiclk", "apb_pclk";
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1183,6 +1199,8 @@
 	uart4: serial@ff370000 {
 		compatible = "rockchip,rk3399-uart", "snps,dw-apb-uart";
 		reg = <0x0 0xff370000 0x0 0x100>;
+		dmas = <&dmac_peri 8>, <&dmac_peri 9>;
+		dma-names = "tx", "rx";
 		clocks = <&pmucru SCLK_UART4_PMU>, <&pmucru PCLK_UART4_PMU>;
 		clock-names = "baudclk", "apb_pclk";
 		interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1383,6 +1401,8 @@
 		interrupt-names = "vpu_mmu";
 		clocks = <&cru ACLK_VCODEC>, <&cru HCLK_VCODEC>;
 		clock-names = "aclk", "hclk";
+		assigned-clocks = <&cru ACLK_VCODEC_PRE>;
+       assigned-clock-parents = <&cru PLL_GPLL>;
 		power-domains = <&power RK3399_PD_VCODEC>;
 		#iommu-cells = <0>;
 	};
@@ -1399,6 +1419,10 @@
 			 <&cru SCLK_VDU_CA>, <&cru SCLK_VDU_CORE>;
 		clock-names = "aclk_vcodec", "hclk_vcodec",
 			      "clk_cabac", "clk_core";
+        assigned-clocks = <&cru ACLK_VDU_PRE>, <&cru SCLK_VDU_CA>,
+             <&cru SCLK_VDU_CORE>;
+        assigned-clock-parents = <&cru PLL_NPLL>, <&cru PLL_NPLL>,
+             <&cru PLL_NPLL>;
 		resets = <&cru SRST_H_VDU>, <&cru SRST_A_VDU>,
 			<&cru SRST_VDU_CORE>, <&cru SRST_VDU_CA>,
 			<&cru SRST_A_VDU_NOC>, <&cru SRST_H_VDU_NOC>;
@@ -1474,7 +1498,7 @@
 		cpu_id: cpu-id@7 {
 			reg = <0x07 0x10>;
 		};
-		cpub_leakage: cpu-leakage@17 {
+		cpub_leakage: cpub-leakage@17 {
 			reg = <0x17 0x1>;
 		};
 		gpu_leakage: gpu-leakage@18 {
@@ -1483,7 +1507,7 @@
 		center_leakage: center-leakage@19 {
 			reg = <0x19 0x1>;
 		};
-		cpul_leakage: cpu-leakage@1a {
+		cpul_leakage: cpul-leakage@1a {
 			reg = <0x1a 0x1>;
 		};
 		logic_leakage: logic-leakage@1b {
@@ -1829,6 +1853,7 @@
 		clocks = <&cru ACLK_VOP1>, <&cru DCLK_VOP1>, <&cru HCLK_VOP1>, <&cru DCLK_VOP1_DIV>;
 		clock-names = "aclk_vop", "dclk_vop", "hclk_vop", "dclk_source";
 		iommus = <&vopl_mmu>;
+		rockchip,grf = <&grf>;
 		power-domains = <&power RK3399_PD_VOPL>;
 		resets = <&cru SRST_A_VOP1>, <&cru SRST_H_VOP1>, <&cru SRST_D_VOP1>;
 		reset-names = "axi", "ahb", "dclk";
@@ -1899,6 +1924,7 @@
 		clock-names = "aclk_vop", "dclk_vop", "hclk_vop", "dclk_source";
 		resets = <&cru SRST_A_VOP0>, <&cru SRST_H_VOP0>, <&cru SRST_D_VOP0>;
 		reset-names = "axi", "ahb", "dclk";
+		rockchip,grf = <&grf>;
 		power-domains = <&power RK3399_PD_VOPB>;
 		iommus = <&vopb_mmu>;
 		status = "disabled";
@@ -2023,7 +2049,7 @@
 		compatible = "rockchip,rk3399-dw-hdmi";
 		reg = <0x0 0xff940000 0x0 0x20000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&hdmi_i2c_xfer>;
+		pinctrl-0 = <&hdmi_i2c_xfer>, <&hdmi_cec>;
 		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&cru PCLK_HDMI_CTRL>,
 			 <&cru SCLK_HDMI_SFR>,

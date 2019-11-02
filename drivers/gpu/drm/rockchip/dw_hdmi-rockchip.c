@@ -726,7 +726,9 @@ dw_hdmi_rockchip_select_output(struct drm_connector_state *conn_state,
 		/* BT2020 require color depth at lest 10bit */
 		*color_depth = 10;
 		/* We prefer use YCbCr422 to send 10bit */
-		if (info->color_formats & DRM_COLOR_FORMAT_YCRCB422)
+		if (info->color_formats & DRM_COLOR_FORMAT_YCRCB422 &&
+		    info->max_tmds_clock <= 340000 &&
+		    hdmi->dev_type != RK3288_HDMI)
 			*color_format = DRM_HDMI_OUTPUT_YCBCR422;
 	}
 
