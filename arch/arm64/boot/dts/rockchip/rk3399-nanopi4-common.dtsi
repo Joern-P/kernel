@@ -1033,8 +1033,7 @@
 };
 
 &sdio0 {
-	clock-frequency = <50000000>;
-	clock-freq-min-max = <50000000 150000000>;
+	max-frequency = <200000000>;
 	supports-sdio;
 	bus-width = <4>;
 	disable-wp;
@@ -1052,8 +1051,6 @@
 };
 
 &sdmmc {
-	clock-frequency = <50000000>;
-	clock-freq-min-max = <50000000 150000000>;
 	supports-sd;
 	bus-width = <4>;
 	cap-mmc-highspeed;
