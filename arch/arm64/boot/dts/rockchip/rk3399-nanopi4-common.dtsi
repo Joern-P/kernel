@@ -522,6 +522,14 @@
 	status = "okay";
 };
 
+&iep {
+	status = "okay";
+};
+
+&iep_mmu {
+	status = "okay";
+};
+
 &rga {
     compatible = "rockchip,rga2";
 	dev_mode = <1>;
