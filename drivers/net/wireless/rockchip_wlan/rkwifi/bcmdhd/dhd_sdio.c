@@ -1084,10 +1084,6 @@ dhdsdio_clk_kso_enab(dhd_bus_t *bus, bool on)
 		if (((rd_val & bmask) == cmp_val) && !err)
 			break;
 
-		if (bus->dhd->disabling && try_cnt > 10) {
-			printf("%s: break due to wlan0 disabling\n", __FUNCTION__);
-			break;
-		}
 
 		KSO_DBG(("%s> KSO wr/rd retry:%d, ERR:%x \n", __FUNCTION__, try_cnt, err));
 
