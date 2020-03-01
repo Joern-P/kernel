@@ -6,15 +6,35 @@
 /dts-v1/;
 
 #include "rk3399-evb-ind.dtsi"
-#include "rk3399-android.dtsi"
+#include "rk3399-linux.dtsi"
 
 / {
-	model = "Rockchip RK3399 EVB IND LPDDR4 Board edp (Android)";
-	compatible = "rockchip,android", "rockchip,rk3399-evb-ind-lpddr4-android", "rockchip,rk3399";
+	model = "Rockchip RK3399 EVB IND LPDDR4 Board edp (Linux)";
+	compatible = "rockchip,linux", "rockchip,rk3399-evb-ind-lpddr4-linux", "rockchip,rk3399";
 
 	iram: sram@ff8d0000 {
 		compatible = "mmio-sram";
 		reg = <0x0 0xff8d0000 0x0 0x20000>;
+	};
+
+	adc_keys: adc-keys {
+		compatible = "adc-keys";
+		io-channels = <&saradc 1>;
+		io-channel-names = "buttons";
+		poll-interval = <100>;
+		keyup-threshold-microvolt = <1800000>;
+
+		vol-down-key {
+			linux,code = <KEY_VOLUMEDOWN>;
+			label = "volume down";
+			press-threshold-microvolt = <300000>;
+		};
+
+		vol-up-key {
+			linux,code = <KEY_VOLUMEUP>;
+			label = "volume up";
+			press-threshold-microvolt = <17000>;
+		};
 	};
 
 	backlight: backlight {
@@ -109,6 +129,10 @@
 	};
 };
 
+&display_subsystem {
+	status = "okay";
+};
+
 &dmac_bus {
 	iram = <&iram>;
 	rockchip,force-iram;
@@ -133,11 +157,25 @@
 	};
 };
 
-&edp_in_vopl {
+&edp_in_vopb {
 	status = "disabled";
 };
 
-&route_edp {
+&hdmi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_i2c_xfer>, <&hdmi_cec>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	#sound-dai-cells = <0>;
+	status = "okay";
+};
+
+&hdmi_in_vopl {
+	status = "disabled";
+};
+
+&i2s0 {
+	#sound-dai-cells = <0>;
 	status = "okay";
 };
 
@@ -146,28 +184,28 @@
 	status = "disabled";
 };
 
-&rk809_sound {
-	status = "okay";
-};
-
 &i2s2 {
 	#sound-dai-cells = <0>;
 	status = "okay";
-};
-
-&hdmi_in_vopb {
-	status = "disabled";
 };
 
 &hdmi_sound {
 	status = "okay";
 };
 
-&isp0 {
+&iep {
 	status = "okay";
 };
 
-&isp1 {
+&iep_mmu {
+	status = "okay";
+};
+
+&rk809_sound {
+	status = "okay";
+};
+
+&route_edp {
 	status = "okay";
 };
 
@@ -182,32 +220,24 @@
 	status = "disabled";
 };
 
-&i2s0 {
-	#sound-dai-cells = <0>;
-	status = "okay";
-};
-
-&rk_key {
-	compatible = "rockchip,key";
-	status = "okay";
-
-	io-channels = <&saradc 1>;
-
-	vol-up-key {
-		linux,code = <115>;
-		label = "volume up";
-		rockchip,adc_value = <1>;
-	};
-
-	vol-down-key {
-		linux,code = <114>;
-		label = "volume down";
-		rockchip,adc_value = <170>;
-	};
-};
-
 &tc358749x_sound {
 	status = "disabled";
+};
+
+&vopb {
+	status = "okay";
+};
+
+&vopb_mmu {
+	status = "okay";
+};
+
+&vopl {
+	status = "okay";
+};
+
+&vopl_mmu {
+	status = "okay";
 };
 
 &pinctrl {
@@ -217,4 +247,8 @@
 		};
 	};
 };
+
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
+/* DON'T PUT ANYTHING BELOW HERE.  PUT IT ABOVE PINCTRL */
 
