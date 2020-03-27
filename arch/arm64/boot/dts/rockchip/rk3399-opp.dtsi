@@ -77,6 +77,7 @@
 		rockchip,pvtm-temp-prop = <115 66>;
 		rockchip,thermal-zone = "soc-thermal";
 
+<<<<<<< HEAD
 		opp-216000000 {
 			opp-hz = /bits/ 64 <216000000>;
 			opp-microvolt = <800000 800000 1250000>;
@@ -84,6 +85,15 @@
 			opp-microvolt-L1 = <800000 800000 1250000>;
 			opp-microvolt-L2 = <800000 800000 1250000>;
 			opp-microvolt-L3 = <800000 800000 1250000>;
+=======
+		opp-408000000 {
+			opp-hz = /bits/ 64 <408000000>;
+			opp-microvolt = <825000 825000 1250000>;
+			opp-microvolt-L0 = <825000 825000 1250000>;
+			opp-microvolt-L1 = <825000 825000 1250000>;
+			opp-microvolt-L2 = <825000 825000 1250000>;
+			opp-microvolt-L3 = <825000 825000 1250000>;
+>>>>>>> 31f28f9123ba30f4e794794fe915ced7e9e3bcec
 			clock-latency-ns = <40000>;
 		};
 		opp-408000000 {
@@ -187,6 +197,7 @@
 		rockchip,pvtm-temp-prop = <71 35>;
 		rockchip,thermal-zone = "soc-thermal";
 
+<<<<<<< HEAD
 		opp-216000000 {
 			opp-hz = /bits/ 64 <216000000>;
 			opp-microvolt = <800000 800000 1250000>;
@@ -194,6 +205,16 @@
 			opp-microvolt-L1 = <800000 800000 1250000>;
 			opp-microvolt-L2 = <800000 800000 1250000>;
 			opp-microvolt-L3 = <800000 800000 1250000>;
+=======
+		opp-408000000 {
+			opp-hz = /bits/ 64 <408000000>;
+			opp-microvolt = <825000 825000 1250000>;
+			opp-microvolt-L0 = <825000 825000 1250000>;
+			opp-microvolt-L1 = <825000 825000 1250000>;
+			opp-microvolt-L2 = <825000 825000 1250000>;
+			opp-microvolt-L3 = <825000 825000 1250000>;
+			opp-microvolt-L4 = <825000 825000 1250000>;
+>>>>>>> 31f28f9123ba30f4e794794fe915ced7e9e3bcec
 			clock-latency-ns = <40000>;
 		};
 		opp-408000000 {
@@ -275,6 +296,7 @@
 			opp-microvolt-L2 = <1150000 1150000 1250000>;
 			opp-microvolt-L3 = <1125000 1125000 1250000>;
 			opp-microvolt-L4 = <1100000 1100000 1250000>;
+<<<<<<< HEAD
 			clock-latency-ns = <40000>;
 		};
 		opp-2016000000 {
@@ -284,6 +306,8 @@
 			opp-microvolt-L1 = <1275000 1275000 1275000>;
 			opp-microvolt-L2 = <1250000 1250000 1250000>;
 			opp-microvolt-L3 = <1225000 1225000 1225000>;
+=======
+>>>>>>> 31f28f9123ba30f4e794794fe915ced7e9e3bcec
 			clock-latency-ns = <40000>;
 		};
 	};

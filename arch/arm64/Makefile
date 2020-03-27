@@ -211,6 +211,7 @@ repack_boot_img := \
 ifeq ($(CONFIG_MACH_NANOPI4),y)
 DTBS := rockchip/rk3399-nanopi4-rev*.dtb
 
+
 PHONY += nanopi4-images nanopi4-bootimg
 nanopi4-images: dtbs kernel.img rklogo
 	$(Q)scripts/resource_tool --dtbname $(objtree)/arch/arm64/boot/dts/$(DTBS) $(LOGO) $(LOGO_KERNEL)
@@ -222,6 +223,10 @@ nanopi4-bootimg: nanopi4-images
 	elif [ -x $(srctree)/scripts/mkbootimg ]; then \
 		$(make_boot_img); \
 	fi
+
+PHONY += nanopi-r2-images nanopi-r2-bootimg
+nanopi-r2-images: nanopi4-images
+nanopi-r2-bootimg: nanopi4-bootimg
 
 endif
 
