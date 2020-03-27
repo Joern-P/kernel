@@ -1,4 +1,4 @@
-ifeq ($(CONFIG_VENDOR_FRIENDLYELEC),y)
+ifeq ($(CONFIG_MACH_NANOPI4),y)
 
 dtb-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3399-nanopi4-rev00.dtb \
