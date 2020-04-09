@@ -295,7 +295,7 @@
 
 	panel: edp-panel {
 		compatible = "lcds", "simple-panel";
-		status = "okay";
+		status = "disabled";
 
 		backlight = <&pwm_bl>;
 		power-supply = <&vcc_lcd>;
@@ -567,6 +567,7 @@
 		};
 
 		route_dp: route-dp {
+			status = "disabled";
 			connect = <&vopl_out_dp>;
 		};
 	};
@@ -593,7 +594,7 @@
 };
 
 &route_edp {
-	status = "okay";
+	status = "disabled";
 };
 
 &cdn_dp {
