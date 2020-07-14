@@ -12852,14 +12852,15 @@ void rtw_delba_check(_adapter *padapter, struct sta_info *psta, u8 from_timer)
                         (sta_rx_data_qos_pkts(psta, i) == sta_last_rx_data_qos_pkts(psta, i)) ) {			
 					if (_TRUE == rtw_inc_and_chk_continual_no_rx_packet(psta, i)) {					
 						/* send a DELBA frame to the peer STA with the Reason Code field set to TIMEOUT */
-						if (!from_timer)
+						if (!from_timer) {
 							ret = issue_del_ba_ex(padapter, psta->cmn.mac_addr, i, 39, 0, 3, 1);
-						else
+						} else {
 							issue_del_ba(padapter,  psta->cmn.mac_addr, i, 39, 0);
-						psta->recvreorder_ctrl[i].enable = _FALSE;
-						if (ret != _FAIL)
-							psta->recvreorder_ctrl[i].ampdu_size = RX_AMPDU_SIZE_INVALID;
-						rtw_reset_continual_no_rx_packet(psta, i);
+							psta->recvreorder_ctrl[i].enable = _FALSE;
+							if (ret != _FAIL)
+								psta->recvreorder_ctrl[i].ampdu_size = RX_AMPDU_SIZE_INVALID;
+							rtw_reset_continual_no_rx_packet(psta, i);
+						}
 					}				
 			} else {
 				/* The inactivity timer is reset when MPDUs to the TID is received. */

@@ -1,19 +1,3 @@
-ifeq ($(CONFIG_MACH_NANOPI4),y)
-
-dtb-$(CONFIG_ARCH_ROCKCHIP) += \
-	rk3399-nanopi4-rev00.dtb \
-	rk3399-nanopi4-rev01.dtb \
-	rk3399-nanopi4-rev04.dtb \
-	rk3399-nanopi4-rev06.dtb \
-	rk3399-nanopi4-rev07.dtb \
-	rk3399-nanopi4-rev21.dtb \
-	rk3399-nanopi4-rev22.dtb
-
-dtb-$(CONFIG_ARCH_ROCKCHIP) += \
-	rk3328-nanopi-r2-rev00.dtb
-
-else
-
 dtb-$(CONFIG_ARCH_ROCKCHIP) += px30-ad-d6-anx6345.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += px30-ad-r35-mb-rk618-dual-lvds.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += px30-ad-r35-mb-rk618-hdmi.dtb
@@ -118,9 +102,13 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-fpga.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-gru-gru.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-gru-kevin-r0.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-gru-kevin-r1.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-hardrock64.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-mid-818-android-6.0.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-mid-818-android.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-pinebookpro.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-pinebookprov1.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-rock960-ab.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-rockpi-4b.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-rockpro64.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-rv1-android.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-sapphire-excavator-box-android-6.0.dtb
@@ -154,8 +142,6 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-v14-linux.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-v14-multi-cam-avb.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-npu-evb-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-npu-evb-v10-multi-cam.dtb
-
-endif
 
 always		:= $(dtb-y)
 subdir-y	:= $(dts-dirs)

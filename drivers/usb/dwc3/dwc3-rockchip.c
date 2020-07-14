@@ -519,7 +519,8 @@ static void dwc3_rockchip_otg_extcon_evt_work(struct work_struct *work)
 
 		if (hcd->state == HC_STATE_HALT) {
 			usb_add_hcd(hcd, hcd->irq, IRQF_SHARED);
-			usb_add_hcd(hcd->shared_hcd, hcd->irq, IRQF_SHARED);
+			if (hcd->shared_hcd)
+				usb_add_hcd(hcd->shared_hcd, hcd->irq, IRQF_SHARED);
 		}
 
 		rockchip->connected = true;
@@ -585,7 +586,8 @@ disconnect:
 					usleep_range(10000, 11000);
 #endif
 
-				usb_remove_hcd(hcd->shared_hcd);
+				if (hcd->shared_hcd)
+					usb_remove_hcd(hcd->shared_hcd);
 				usb_remove_hcd(hcd);
 			}
 
@@ -597,12 +599,16 @@ disconnect:
 		}
 
 		if (DWC3_GCTL_PRTCAP(reg) == DWC3_GCTL_PRTCAP_DEVICE) {
+#ifndef CONFIG_PM
+			ret = -1;
+#else
 			ret = readx_poll_timeout(atomic_read,
 						 &dwc->dev->power.usage_count,
 						 val,
 						 val < 2,
 						 1000,
 						 PERIPHERAL_DISCONNECT_TIMEOUT);
+#endif
 			if (ret < 0 && dwc->connected) {
 				rockchip->skip_suspend = true;
 				dev_warn(rockchip->dev, "Peripheral disconnect timeout\n");
@@ -689,7 +695,8 @@ static void dwc3_rockchip_async_probe(void *data, async_cookie_t cookie)
 
 	if (rockchip->edev || rockchip->dwc->dr_mode == USB_DR_MODE_OTG) {
 		if (rockchip->hcd && rockchip->hcd->state != HC_STATE_HALT) {
-			usb_remove_hcd(rockchip->hcd->shared_hcd);
+			if(rockchip->hcd->shared_hcd)
+				usb_remove_hcd(rockchip->hcd->shared_hcd);
 			usb_remove_hcd(rockchip->hcd);
 		}
 
@@ -915,7 +922,8 @@ static int dwc3_rockchip_remove(struct platform_device *pdev)
 		 */
 		if (hcd->state == HC_STATE_HALT) {
 			usb_add_hcd(hcd, hcd->irq, IRQF_SHARED);
-			usb_add_hcd(hcd->shared_hcd, hcd->irq, IRQF_SHARED);
+			if (hcd->shared_hcd)
+				usb_add_hcd(hcd->shared_hcd, hcd->irq, IRQF_SHARED);
 		}
 	}
 

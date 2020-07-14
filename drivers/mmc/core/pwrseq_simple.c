@@ -15,7 +15,6 @@
 #include <linux/slab.h>
 #include <linux/device.h>
 #include <linux/err.h>
-#include <linux/of_gpio.h>
 #include <linux/gpio/consumer.h>
 #include <linux/delay.h>
 #include <linux/property.h>

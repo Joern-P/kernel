@@ -268,7 +268,24 @@ int mali_devfreq_init(struct mali_device *mdev)
 			     &ondemand_data.downdifferential);
 
 	mdev->devfreq = devfreq_add_device(mdev->dev, dp,
-					   "simple_ondemand", &ondemand_data);
+#if defined(CONFIG_MALI_FREQ_DEFAULT_GOV_SIMPLE_ONDEMAND)
+		"simple_ondemand", &ondemand_data
+#elif defined(CONFIG_MALI_FREQ_DEFAULT_GOV_PERFORMANCE)
+		"performance", NULL
+#elif defined(CONFIG_MALI_FREQ_DEFAULT_GOV_POWERSAVE)
+		"powersave", NULL
+#elif defined(CONFIG_MALI_FREQ_DEFAULT_GOV_MRFIXEDFREQ5)
+		"mrfixedfreq5", NULL
+#elif defined(CONFIG_MALI_FREQ_DEFAULT_GOV_MRFIXEDFREQ6)
+		"mrfixedfreq6", NULL
+#elif defined(CONFIG_MALI_FREQ_DEFAULT_GOV_MRFIXEDFREQ7)
+		"mrfixedfreq7", NULL
+#elif defined(CONFIG_MALI_FREQ_DEFAULT_GOV_MRFIXEDFREQ8)
+		"mrfixedfreq8", NULL
+#else
+		"simple_ondemand", &ondemand_data
+#endif
+		 );
 	if (IS_ERR(mdev->devfreq)) {
 		mali_devfreq_term_freq_table(mdev);
 		return PTR_ERR(mdev->devfreq);

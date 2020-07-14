@@ -80,15 +80,6 @@
 		dsi1 = &dsi1;
 	};
 
-	arm-pmu {
-		compatible = "arm,cortex-a12-pmu";
-		interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 154 IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-affinity = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
-	};
-
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -111,6 +102,9 @@
 			reg = <0x501>;
 			resets = <&cru SRST_CORE1>;
 			operating-points-v2 = <&cpu0_opp_table>;
+			#cooling-cells = <2>; /* min followed by max */
+			dynamic-power-coefficient = <322>;
+			clocks = <&cru ARMCLK>;
 		};
 		cpu2: cpu@502 {
 			device_type = "cpu";
@@ -118,6 +112,9 @@
 			reg = <0x502>;
 			resets = <&cru SRST_CORE2>;
 			operating-points-v2 = <&cpu0_opp_table>;
+			#cooling-cells = <2>; /* min followed by max */
+			dynamic-power-coefficient = <322>;
+			clocks = <&cru ARMCLK>;
 		};
 		cpu3: cpu@503 {
 			device_type = "cpu";
@@ -125,6 +122,9 @@
 			reg = <0x503>;
 			resets = <&cru SRST_CORE3>;
 			operating-points-v2 = <&cpu0_opp_table>;
+			#cooling-cells = <2>; /* min followed by max */
+			dynamic-power-coefficient = <322>;
+			clocks = <&cru ARMCLK>;
 		};
 	};
 
@@ -134,7 +134,7 @@
 
 		clocks = <&cru PLL_APLL>;
 		rockchip,avs-scale = <17>;
-		rockchip,max-volt = <1350000>;
+		rockchip,max-volt = <1400000>;
 		nvmem-cells = <&cpu_leakage>, <&special_function>,
 			      <&performance>, <&process_version>,
 			      <&performance_w>, <&package_info>;
@@ -265,6 +265,15 @@
 		};
 	};
 
+	arm-pmu {
+		compatible = "arm,cortex-a12-pmu";
+		interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 153 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 154 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-affinity = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
+	};
+
 	amba {
 		compatible = "arm,amba-bus";
 		#address-cells = <2>;
@@ -347,56 +356,67 @@
 		arm,no-tick-in-suspend;
 	};
 
-	display-subsystem {
+	display_subsystem: display-subsystem {
 		compatible = "rockchip,display-subsystem";
-		ports = <&vopl_out>, <&vopb_out>;
+		ports = <&vopb_out>, <&vopl_out>;
+		devfreq = <&dmc>;
+		clocks = <&cru PLL_NPLL>;
+		clock-names = "hdmi-tmds-pll";
 	};
 
 	sdmmc: dwmmc@ff0c0000 {
 		compatible = "rockchip,rk3288-dw-mshc";
-		clock-freq-min-max = <400000 150000000>;
+		max-frequency = <150000000>;
 		clocks = <&cru HCLK_SDMMC>, <&cru SCLK_SDMMC>,
 			 <&cru SCLK_SDMMC_DRV>, <&cru SCLK_SDMMC_SAMPLE>;
 		clock-names = "biu", "ciu", "ciu-drive", "ciu-sample";
 		fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0x0 0xff0c0000 0x0 0x4000>;
+		resets = <&cru SRST_MMC0>;
+		reset-names = "reset";
 		status = "disabled";
 	};
 
 	sdio0: dwmmc@ff0d0000 {
 		compatible = "rockchip,rk3288-dw-mshc";
-		clock-freq-min-max = <400000 150000000>;
+		max-frequency = <150000000>;
 		clocks = <&cru HCLK_SDIO0>, <&cru SCLK_SDIO0>,
 			 <&cru SCLK_SDIO0_DRV>, <&cru SCLK_SDIO0_SAMPLE>;
 		clock-names = "biu", "ciu", "ciu-drive", "ciu-sample";
 		fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0x0 0xff0d0000 0x0 0x4000>;
+		resets = <&cru SRST_SDIO0>;
+		reset-names = "reset";
 		status = "disabled";
 	};
 
 	sdio1: dwmmc@ff0e0000 {
 		compatible = "rockchip,rk3288-dw-mshc";
-		clock-freq-min-max = <400000 150000000>;
+		max-frequency = <150000000>;
 		clocks = <&cru HCLK_SDIO1>, <&cru SCLK_SDIO1>,
 			 <&cru SCLK_SDIO1_DRV>, <&cru SCLK_SDIO1_SAMPLE>;
 		clock-names = "biu", "ciu", "ciu-drive", "ciu-sample";
 		fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0x0 0xff0e0000 0x0 0x4000>;
+		resets = <&cru SRST_SDIO1>;
+		reset-names = "reset";
 		status = "disabled";
 	};
 
 	emmc: dwmmc@ff0f0000 {
 		compatible = "rockchip,rk3288-dw-mshc";
-		clock-freq-min-max = <400000 150000000>;
+		max-frequency = <150000000>;
 		clocks = <&cru HCLK_EMMC>, <&cru SCLK_EMMC>,
 			 <&cru SCLK_EMMC_DRV>, <&cru SCLK_EMMC_SAMPLE>;
 		clock-names = "biu", "ciu", "ciu-drive", "ciu-sample";
 		fifo-depth = <0x100>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0x0 0xff0f0000 0x0 0x4000>;
+		resets = <&cru SRST_EMMC>;
+		reset-names = "reset";
 		status = "disabled";
 		supports-emmc;
 	};
@@ -629,7 +649,7 @@
 			};
 		};
 
-		gpu_thermal: gpu-thermal {
+		gpu_thermal: gpu {
 			polling-delay-passive = <200>; /* milliseconds */
 			polling-delay = <1000>; /* milliseconds */
 			thermal-sensors = <&tsadc 2>;
@@ -640,6 +660,7 @@
 		compatible = "rockchip,rk3288-tsadc";
 		reg = <0x0 0xff280000 0x0 0x100>;
 		interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
+		rockchip,grf = <&grf>;
 		clocks = <&cru SCLK_TSADC>, <&cru PCLK_TSADC>;
 		clock-names = "tsadc", "apb_pclk";
 		assigned-clocks = <&cru SCLK_TSADC>;
@@ -649,6 +670,7 @@
 		pinctrl-names = "gpio", "otpout";
 		pinctrl-0 = <&otp_gpio>;
 		pinctrl-1 = <&otp_gpio>;
+		pinctrl-2 = <&otp_gpio>;
 		#thermal-sensor-cells = <1>;
 		rockchip,hw-tshut-temp = <120000>;
 		rockchip,hw-tshut-mode = <0>; /* tshut mode 0:CRU 1:GPIO */
@@ -740,6 +762,12 @@
 		status = "disabled";
 	};
 
+	dfi: dfi {
+		compatible = "rockchip,rk3288-dfi";
+		rockchip,pmu = <&pmu>;
+		rockchip,grf = <&grf>;
+	};
+
 	dmc: dmc@ff610000 {
 		compatible = "rockchip,rk3288-dmc", "syscon";
 		rockchip,cru = <&cru>;
@@ -752,12 +780,35 @@
 		       0x0 0xff630000 0x0 0x3fc
 		       0x0 0xff640000 0x0 0x294>;
 		rockchip,sram = <&ddr_sram>;
-		clocks = <&cru PCLK_DDRUPCTL0>, <&cru PCLK_PUBL0>,
+		clocks = <&cru SCLK_DDRCLK>, <&cru PCLK_DDRUPCTL0>, <&cru PCLK_PUBL0>,
 			 <&cru PCLK_DDRUPCTL1>, <&cru PCLK_PUBL1>,
 			 <&cru ARMCLK>, <&cru ACLK_DMAC1>;
-		clock-names = "pclk_ddrupctl0", "pclk_publ0",
+		clock-names = "dmc_clk", "pclk_ddrupctl0", "pclk_publ0",
 			      "pclk_ddrupctl1", "pclk_publ1",
 			      "arm_clk", "aclk_dmac1";
+		devfreq-events = <&dfi>;
+		operating-points-v2 = <&dmc_opp_table>;
+	};
+
+	dmc_opp_table: opp_table2 {
+		compatible = "operating-points-v2";
+
+		opp-192000000 {
+			opp-hz = /bits/ 64 <192000000>;
+			opp-microvolt = <1100000>;
+		};
+		opp-300000000 {
+			opp-hz = /bits/ 64 <300000000>;
+			opp-microvolt = <1100000>;
+		};
+		opp-396000000 {
+			opp-hz = /bits/ 64 <396000000>;
+			opp-microvolt = <1100000>;
+		};
+		opp-528000000 {
+			opp-hz = /bits/ 64 <528000000>;
+			opp-microvolt = <1150000>;
+		};
 	};
 
 	i2c2: i2c@ff660000 {
@@ -974,6 +1025,7 @@
 					 <&cru SCLK_EDP_24M>,
 					 <&cru SCLK_EDP>,
 					 <&cru SCLK_HDMI_CEC>,
+					 <&cru SCLK_HDMI_HDCP>,
 					 <&cru SCLK_ISP_JPE>,
 					 <&cru SCLK_ISP>,
 					 <&cru SCLK_RGA>;
@@ -1048,14 +1100,14 @@
 		#clock-cells = <1>;
 		#reset-cells = <1>;
 		assigned-clocks =
-				<&cru PLL_GPLL>, <&cru PLL_NPLL>,
+				<&cru PLL_GPLL>, 
 				<&cru ACLK_CPU>, <&cru HCLK_CPU>,
 				<&cru PCLK_CPU>, <&cru ACLK_PERI>,
 				<&cru HCLK_PERI>, <&cru PCLK_PERI>,
 				<&cru ACLK_VIO0>, <&cru ACLK_VIO1>,
 				<&cru ACLK_GPU>;
 		assigned-clock-rates =
-				<594000000>, <1250000000>,
+				<594000000>, 
 				<300000000>, <150000000>,
 				<75000000>, <300000000>,
 				<150000000>, <75000000>,
@@ -1413,6 +1465,8 @@
 		resets = <&cru SRST_LCDC0_AXI>, <&cru SRST_LCDC0_AHB>, <&cru SRST_LCDC0_DCLK>;
 		reset-names = "axi", "ahb", "dclk";
 		iommus = <&vopb_mmu>;
+		assigned-clocks = <&cru DCLK_VOP0>;
+		assigned-clock-parents = <&cru PLL_NPLL>;
 		status = "disabled";
 
 		vopb_out: port {
@@ -1682,12 +1736,14 @@
 		reg-io-width = <4>;
 		rockchip,grf = <&grf>;
 		interrupts = <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&cru  PCLK_HDMI_CTRL>, <&cru SCLK_HDMI_HDCP>, <&cru SCLK_HDMI_CEC>;
-		clock-names = "iahb", "isfr", "cec";
+		clocks = <&cru PCLK_HDMI_CTRL>, <&cru SCLK_HDMI_HDCP>, <&cru PLL_NPLL>, <&cru SCLK_HDMI_CEC>;
+		clock-names = "iahb", "isfr", "vpll", "cec";
 		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&hdmi_ddc>;
 		pinctrl-1 = <&hdmi_gpio>;
 		power-domains = <&power RK3288_PD_VIO>;
+		resets = <&cru SRST_HDMI>;
+		reset-names = "hdmi";
 		status = "disabled";
 
 		ports {
@@ -1716,8 +1772,6 @@
 		clock-names = "aclk", "hclk";
 		power-domains = <&power RK3288_PD_VIDEO>;
 		iommus = <&vpu_mmu>;
-		assigned-clocks = <&cru ACLK_VCODEC>;
-		assigned-clock-rates = <400000000>;
 		status = "disabled";
 	};
 
@@ -1761,16 +1815,6 @@
 			<&cru SCLK_HEVC_CABAC>;
 		clock-names = "aclk_vcodec", "hclk_vcodec", "clk_core",
 			"clk_cabac";
-		/*
-		 * The 4K hevc would also work well with 500/125/300/300,
-		 * no more err irq and reset request.
-		 */
-		assigned-clocks = <&cru ACLK_HEVC>, <&cru HCLK_HEVC>,
-				  <&cru SCLK_HEVC_CORE>,
-				  <&cru SCLK_HEVC_CABAC>;
-		assigned-clock-rates = <400000000>, <100000000>,
-				       <300000000>, <300000000>;
-
 		resets = <&cru SRST_HEVC>;
 		reset-names = "video";
 		power-domains = <&power RK3288_PD_HEVC>;
@@ -1811,6 +1855,7 @@
 		operating-points-v2 = <&gpu_opp_table>;
 		#cooling-cells = <2>; /* min followed by max */
 		power-domains = <&power RK3288_PD_GPU>;
+		power-off-delay-ms = <200>;
 		status = "disabled";
 
 		upthreshold = <75>;
@@ -1821,7 +1866,7 @@
 			static-coefficient = <411000>;
 			dynamic-coefficient = <733>;
 			ts = <32000 4700 (-80) 2>;
-			thermal-zone = "gpu-thermal";
+			thermal-zone = "gpu";
 		};
 	};
 
@@ -1831,12 +1876,6 @@
 		clocks = <&cru PLL_GPLL>;
 		nvmem-cells = <&performance>, <&performance_w>;
 		nvmem-cell-names = "performance", "performance-w";
-		rockchip,bin-scaling-sel = <
-			0               55
-			1               59
-			2               61
-			3               61
-		>;
 
 		opp-200000000 {
 			opp-hz = /bits/ 64 <200000000>;

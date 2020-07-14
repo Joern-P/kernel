@@ -50,7 +50,6 @@ struct rk_priv_data {
 	int phy_iface;
 	struct regulator *regulator;
 	bool suspended;
-	int wolopts;
 	const struct rk_gmac_ops *ops;
 
 	bool clk_enabled;
@@ -1285,8 +1284,6 @@ static int rk_gmac_clk_init(struct plat_stmmacenet_data *plat)
 	}
 
 	bsp_priv->clk_mac_speed = devm_clk_get(dev, "clk_mac_speed");
-	if (IS_ERR(bsp_priv->clk_mac_speed))
-		dev_err(dev, "cannot get clock %s\n", "clk_mac_speed");
 
 	if (bsp_priv->clock_input) {
 		dev_info(dev, "clock input from PHY\n");
@@ -1568,7 +1565,6 @@ static void rk_fix_speed(void *priv, unsigned int speed)
 	}
 }
 
-
 void dwmac_rk_set_rgmii_delayline(struct stmmac_priv *priv,
 				  int tx_delay, int rx_delay)
 {
@@ -1602,33 +1598,6 @@ int dwmac_rk_get_phy_interface(struct stmmac_priv *priv)
 	return bsp_priv->phy_iface;
 }
 EXPORT_SYMBOL(dwmac_rk_get_phy_interface);
-
-static void rk_get_wol(struct net_device *ndev, struct ethtool_wolinfo *wol)
-{
-	struct stmmac_priv *stpriv = netdev_priv(ndev);
-
-	wol->supported = WAKE_MAGIC;
-	wol->wolopts = stpriv->wolopts;
-}
-
-static int rk_set_wol(struct net_device *ndev, struct ethtool_wolinfo *wol)
-{
-	struct stmmac_priv *stpriv = netdev_priv(ndev);
-	int err;
-
-	err = phy_ethtool_set_wol(stpriv->phydev, wol);
-	if (err < 0) {
-		dev_err(stpriv->device, "phy failed to set_wol, %d\n", err);
-		return err;
-	}
-
-	mutex_lock(&stpriv->lock);
-	stpriv->wolopts = wol->wolopts;
-	mutex_unlock(&stpriv->lock);
-
-	return 0;
-}
-
 
 void __weak rk_devinfo_get_eth_mac(u8 *mac)
 {
@@ -1688,8 +1657,6 @@ static int rk_gmac_probe(struct platform_device *pdev)
 	plat_dat->has_gmac = true;
 	plat_dat->fix_mac_speed = rk_fix_speed;
 	plat_dat->get_eth_addr = rk_get_eth_addr;
-	plat_dat->set_wol = rk_set_wol;
-	plat_dat->get_wol = rk_get_wol;
 
 	plat_dat->bsp_priv = rk_gmac_setup(pdev, plat_dat, data);
 	if (IS_ERR(plat_dat->bsp_priv))

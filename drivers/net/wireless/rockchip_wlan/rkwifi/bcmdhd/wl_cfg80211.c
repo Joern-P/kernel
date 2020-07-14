@@ -2765,7 +2765,7 @@ wl_run_escan(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 	}
 	if (!cfg->p2p_supported || !p2p_scan(cfg)) {
 		/* LEGACY SCAN TRIGGER */
-		WL_SCAN(("LEGACY E-SCAN START\n"));
+		WL_SCAN((" LEGACY E-SCAN START\n"));
 
 #if defined(USE_INITIAL_SHORT_DWELL_TIME)
 		if (!request) {
@@ -2823,7 +2823,7 @@ wl_run_escan(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 
 		err = wldev_iovar_setbuf(ndev, "escan", params, params_size,
 			cfg->escan_ioctl_buf, WLC_IOCTL_MEDLEN, NULL);
-		WL_SCAN((" sync ID: %d, bssidx: %d\n", params->sync_id, bssidx));
+		WL_DBG(("%s: LEGACY_SCAN sync ID: %d, bssidx: %d\n", __FUNCTION__, params->sync_id, bssidx));
 		if (unlikely(err)) {
 			if (err == BCME_EPERM)
 				/* Scan Not permitted at this point of time */
@@ -9503,7 +9503,7 @@ static s32 wl_cfg80211_hostapd_sec(
 			}
 		}
 	} else {
-		WL_DBG(("No WPSIE in beacon \n"));
+		WL_ERR(("No WPSIE in beacon \n"));
 	}
 	return 0;
 }
@@ -9990,7 +9990,7 @@ wl_cfg80211_stop_ap(
 			}
 		}
 
-		wl_cfg80211_clear_per_bss_ies(cfg, bssidx);
+		 wl_cfg80211_clear_per_bss_ies(cfg, bssidx);
 #ifdef SUPPORT_AP_RADIO_PWRSAVE
 		wl_set_ap_rps(dev, FALSE, dev->name);
 		wl_cfg80211_init_ap_rps(cfg);
@@ -10312,7 +10312,7 @@ wl_cfg80211_del_beacon(struct wiphy *wiphy, struct net_device *dev)
 	if (err < 0) {
 		WL_ERR(("SET INFRA error %d\n", err));
 	}
-	wl_cfg80211_clear_per_bss_ies(cfg, bssidx);
+	 wl_cfg80211_clear_per_bss_ies(cfg, bssidx);
 
 	if (wdev->iftype == NL80211_IFTYPE_AP) {
 		/* clear the AP mode */
@@ -15273,9 +15273,9 @@ static s32 wl_escan_handler(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 						* both on-channel or both off-channel
 						*/
 						WL_SCAN(("%s("MACDBG"), same onchan"
-							", RSSI: prev %d new %d\n",
-							bss->SSID, MAC2STRDBG(bi->BSSID.octet),
-							bss->RSSI, bi->RSSI));
+						", RSSI: prev %d new %d\n",
+						bss->SSID, MAC2STRDBG(bi->BSSID.octet),
+						bss->RSSI, bi->RSSI));
 						bi->RSSI = MAX(bss->RSSI, bi->RSSI);
 					} else if ((bss->flags & WL_BSS_FLAGS_RSSI_ONCHANNEL) &&
 						(bi->flags & WL_BSS_FLAGS_RSSI_ONCHANNEL) == 0) {
@@ -15283,9 +15283,9 @@ static s32 wl_escan_handler(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 						* if the new measurement is off channel
 						*/
 						WL_SCAN(("%s("MACDBG"), prev onchan"
-							", RSSI: prev %d new %d\n",
-							bss->SSID, MAC2STRDBG(bi->BSSID.octet),
-							bss->RSSI, bi->RSSI));
+						", RSSI: prev %d new %d\n",
+						bss->SSID, MAC2STRDBG(bi->BSSID.octet),
+						bss->RSSI, bi->RSSI));
 						bi->RSSI = bss->RSSI;
 						bi->flags |= WL_BSS_FLAGS_RSSI_ONCHANNEL;
 					}
@@ -15296,8 +15296,8 @@ static s32 wl_escan_handler(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 							" is occured(bcast:%d->probresp%d)\n",
 							bss->ie_length, bi->ie_length));
 						WL_SCAN(("%s("MACDBG"), replacement!(%d -> %d)\n",
-							bss->SSID, MAC2STRDBG(bi->BSSID.octet),
-							prev_len, bi_length));
+						bss->SSID, MAC2STRDBG(bi->BSSID.octet),
+						prev_len, bi_length));
 
 						if (list->buflen - prev_len + bi_length
 							> ESCAN_BUF_SIZE) {
@@ -15867,12 +15867,8 @@ fail:
 struct bcm_cfg80211 *wl_get_cfg(struct net_device *ndev)
 {
 	struct wireless_dev *wdev = ndev->ieee80211_ptr;
-	struct device *pdev = wl_cfg80211_get_parent_dev();
 
 	if (!wdev || !wdev->wiphy)
-		return NULL;
-
-	if (pdev && pdev != wiphy_dev(wdev->wiphy))
 		return NULL;
 
 	return wiphy_priv(wdev->wiphy);

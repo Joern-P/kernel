@@ -906,7 +906,7 @@ static int dwmac_rk_init_dma_desc_rings(struct net_device *dev, gfp_t flags,
 	lb_priv->rx_skbuff = NULL;
 	priv->hw->desc->init_rx_desc(lb_priv->dma_rx,
 				     priv->use_riwt, priv->mode,
-				     true);
+				     true, priv->dma_buf_sz);
 
 	priv->hw->desc->init_tx_desc(lb_priv->dma_tx,
 				     priv->mode,

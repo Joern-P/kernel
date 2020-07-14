@@ -100,8 +100,6 @@ rockchip_fb_alloc(struct drm_device *dev, struct drm_mode_fb_cmd2 *mode_cmd,
 {
 	struct rockchip_drm_fb *rockchip_fb;
 	struct rockchip_gem_object *rk_obj;
-	struct rockchip_drm_private *private = dev->dev_private;
-	struct drm_fb_helper *fb_helper = private->fbdev_helper;
 	int ret = 0;
 	int i;
 
@@ -127,9 +125,6 @@ rockchip_fb_alloc(struct drm_device *dev, struct drm_mode_fb_cmd2 *mode_cmd,
 			rk_obj = to_rockchip_obj(obj[i]);
 			rockchip_fb->dma_addr[i] = rk_obj->dma_addr;
 			rockchip_fb->kvaddr[i] = rk_obj->kvaddr;
-			private->fbdev_bo = &rk_obj->base;
-			if (fb_helper && fb_helper->fbdev && rk_obj->kvaddr)
-				fb_helper->fbdev->screen_base = rk_obj->kvaddr;
 		}
 #ifndef MODULE
 	} else if (logo) {
@@ -234,6 +229,13 @@ static int rockchip_drm_bandwidth_atomic_check(struct drm_device *dev,
 
 	*bandwidth = 0;
 	*plane_num = 0;
+	for_each_crtc_in_state(state, crtc, crtc_state, i) {
+		funcs = priv->crtc_funcs[drm_crtc_index(crtc)];
+
+		if (funcs && funcs->bandwidth)
+			*bandwidth += funcs->bandwidth(crtc, crtc_state,
+						       plane_num);
+	}
 
 	/*
 	 * Check ddr frequency support here here.
@@ -244,18 +246,9 @@ static int rockchip_drm_bandwidth_atomic_check(struct drm_device *dev,
 			priv->devfreq = NULL;
 	}
 
-	if (priv->devfreq) {
-		for_each_crtc_in_state(state, crtc, crtc_state, i) {
-			funcs = priv->crtc_funcs[drm_crtc_index(crtc)];
-
-			if (funcs && funcs->bandwidth)
-				*bandwidth += funcs->bandwidth(crtc, crtc_state,
-							       plane_num);
-		}
-
+	if (priv->devfreq)
 		ret = rockchip_dmcfreq_vop_bandwidth_request(priv->devfreq,
 							     *bandwidth);
-	}
 
 	return ret;
 }

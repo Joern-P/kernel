@@ -100,10 +100,6 @@ struct cpufreq_policy {
 	 * - Any routine that will write to the policy structure and/or may take away
 	 *   the policy altogether (eg. CPU hotplug), will hold this lock in write
 	 *   mode before doing so.
-	 *
-	 * Additional rules:
-	 * - Lock should not be held across
-	 *     __cpufreq_governor(data, CPUFREQ_GOV_POLICY_EXIT);
 	 */
 	struct rw_semaphore	rwsem;
 
@@ -524,13 +520,27 @@ extern struct cpufreq_governor cpufreq_gov_sched;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL)
 extern struct cpufreq_governor cpufreq_gov_schedutil;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_schedutil)
-#endif
-#if defined(CONFIG_ARCH_ROCKCHIP) && defined(CONFIG_CPU_FREQ_GOV_INTERACTIVE)
-void cpufreq_task_boost(int cpu, unsigned long util);
-#else
-static inline void cpufreq_task_boost(int cpu, unsigned long util)
-{
-}
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ12)
+extern struct cpufreq_governor cpufreq_gov_mrfixedfreq12;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_mrfixedfreq12)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ13)
+extern struct cpufreq_governor cpufreq_gov_mrfixedfreq13;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_mrfixedfreq13)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ14)
+extern struct cpufreq_governor cpufreq_gov_mrfixedfreq14;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_mrfixedfreq14)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ15)
+extern struct cpufreq_governor cpufreq_gov_mrfixedfreq15;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_mrfixedfreq15)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ18)
+extern struct cpufreq_governor cpufreq_gov_mrfixedfreq18;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_mrfixedfreq18)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ20)
+extern struct cpufreq_governor cpufreq_gov_mrfixedfreq20;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_mrfixedfreq20)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ22)
+extern struct cpufreq_governor cpufreq_gov_mrfixedfreq22;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_mrfixedfreq22)
 #endif
 
 static inline void cpufreq_policy_apply_limits(struct cpufreq_policy *policy)

@@ -42,10 +42,24 @@
 #include <dt-bindings/clock/rockchip,rk808.h>
 #include "rk3288.dtsi"
 #include "rk3288-rkisp1.dtsi"
-#include "rk3288-linux.dtsi"
+#include "rk3288cg-opp.dtsi"
+
+#include <dt-bindings/soc/rockchip-system-status.h>
+#include "rk3288-dram-default-timing.dtsi"
 
 / {
+	model = "ASUS Tinker Board";
 	compatible = "rockchip,rk3288-miniarm", "rockchip,rk3288";
+
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0xff690000 console=ttyS2,115200n8 swiotlb=1 coherent_pool=1m usbcore.autosuspend=-1 net.ifnames=0";
+	};
+
+	cpuinfo {
+		compatible = "rockchip,cpuinfo";
+		nvmem-cells = <&efuse_id>;
+		nvmem-cell-names = "id";
+	};
 
 	memory {
 		device_type = "memory";
@@ -67,7 +81,7 @@
 	wireless-wlan {
 		compatible = "wlan-platdata";
 		rockchip,grf = <&grf>;
-		wifi_chip_type = "ap6212";
+		wifi_chip_type = "rtl8723bs";
 		sdio_vref = <1800>;
 		WIFI,host_wake_irq = <&gpio4 30 GPIO_ACTIVE_HIGH>;
 		status = "okay";
@@ -129,16 +143,16 @@
 			linux,default-trigger="mmc0";
 		};
 
-		led1-led {
+		heartbeat-led {
 			gpios=<&gpio1 25 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger="default-off";
+			linux,default-trigger="heartbeat";
 		};
 	};
 
 	sound {
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
-		simple-audio-card,name = "rockchip,miniarm-codec";
+		simple-audio-card,name = "HDMI";
 		simple-audio-card,mclk-fs = <512>;
 		simple-audio-card,cpu {
 			sound-dai = <&i2s>;
@@ -174,6 +188,14 @@
 		vin-supply = <&vcc_io>;
 	};
 
+	vcc_flash: flash-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_flash";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&vcc_io>;
+	};
+
 	vcc_cam: vcc-camera {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc_cam";
@@ -204,20 +226,155 @@
 	cpu0-supply = <&vdd_cpu>;
 };
 
+&cpu1 {
+	cpu0-supply = <&vdd_cpu>;
+};
+
+&cpu2 {
+	cpu0-supply = <&vdd_cpu>;
+};
+
+&cpu3 {
+	cpu0-supply = <&vdd_cpu>;
+};
+
+&cpu0_opp_table {
+	rockchip,max-volt = <1500000>;
+	/* overclock frequencies below - use governors to set desired freq */
+	opp-1896000000 {
+		opp-hz = /bits/ 64 <1896000000>;
+		opp-microvolt = <1425000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-1920000000 {
+		opp-hz = /bits/ 64 <1920000000>;
+		opp-microvolt = <1425000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-1992000000 {
+		opp-hz = /bits/ 64 <1992000000>;
+		opp-microvolt = <1450000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2016000000 {
+		opp-hz = /bits/ 64 <2016000000>;
+		opp-microvolt = <1475000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2040000000 {
+		opp-hz = /bits/ 64 <2040000000>;
+		opp-microvolt = <1475000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2064000000 {
+		opp-hz = /bits/ 64 <2064000000>;
+		opp-microvolt = <1475000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2088000000 {
+		opp-hz = /bits/ 64 <2088000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2112000000 {
+		opp-hz = /bits/ 64 <2112000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2136000000 {
+		opp-hz = /bits/ 64 <2136000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2160000000 {
+		opp-hz = /bits/ 64 <2160000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2184000000 {
+		opp-hz = /bits/ 64 <2184000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+		status = "disabled";
+	};
+	opp-2208000000 {
+		opp-hz = /bits/ 64 <2208000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+		status = "disabled";
+	};
+};
+
+&display_subsystem {
+	status = "okay";
+	route {
+		route_hdmi: route-hdmi {
+			status = "okay";
+			connect = <&vopb_out_hdmi>;
+		};
+	};
+};
+
+&dmc {
+	upthreshold = <55>;
+	downdifferential = <10>;
+	rockchip,ddr_timing = <&ddr_timing>;
+	system-status-freq = <
+		/*system status		freq(KHz)*/
+		SYS_STATUS_NORMAL	396000
+		SYS_STATUS_REBOOT	396000
+		SYS_STATUS_SUSPEND	192000
+		SYS_STATUS_VIDEO_1080P	300000
+		SYS_STATUS_VIDEO_4K	396000
+		SYS_STATUS_VIDEO_4K_10B	528000
+		SYS_STATUS_PERFORMANCE	528000
+		SYS_STATUS_BOOST	396000
+		SYS_STATUS_DUALVIEW	396000
+		SYS_STATUS_ISP		396000
+	>;
+	auto-min-freq = <396000>;
+	auto-freq-en = <0>;
+};
+
+&emmc {
+	bus-width = <8>;
+	cap-mmc-highspeed;
+	disable-wp;
+	mmc-ddr-1_8v;
+	mmc-hs200-1_8v;
+	non-removable;
+	num-slots = <1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_pwr &emmc_bus8>;
+	max-frequency = <150000000>;
+	status = "okay";
+};
+
 &gmac {
 	phy-supply = <&vcc33_lan>;
 	phy-mode = "rgmii";
 	clock_in_out = "input";
+	snps,force_thresh_dma_mode;
 	snps,reset-gpio = <&gpio4 7 0>;
 	snps,reset-active-low;
-	snps,reset-delays-us = <0 10000 1000000>;
+	snps,reset-delays-us = <0 10000 50000>;
 	assigned-clocks = <&cru SCLK_MAC>;
 	assigned-clock-parents = <&ext_gmac>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&rgmii_pins>;
 	tx_delay = <0x30>;
 	rx_delay = <0x10>;
-	status = "ok";
+	status = "okay";
 };
 
 &gpu {
@@ -225,17 +382,32 @@
 	status = "okay";
 };
 
+/* GPU Devfreq Req Settings */
+&gpu_power_model {
+	// for DDK r14.
+	voltage = <900>;
+	frequency = <500>;
+	static-power = <300>;
+	dynamic-power = <396>;
+};
+
 &hdmi {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	#sound-dai-cells = <0>;
 	status = "okay";
-	/* Don't use vopl for HDMI */
-	ports {
-		hdmi_in: port {
-			/delete-node/ endpoint@1;
-		};
-	};
+	pinctrl-0 = <&hdmi_cec>;
+	ddc-i2c-bus = <&i2c5>;
+	rockchip,phy-table =
+		<74250000 0x8009 0x0004 0x0272>,
+		<165000000 0x802b 0x0004 0x0209>,
+		<297000000 0x8039 0x0005 0x028d>,
+		<594000000 0x8039 0x0000 0x019d>,
+		<000000000 0x0000 0x0000 0x0000>;
+};
+
+&i2c5 {
+	status = "okay";
 };
 
 &hevc_service {
@@ -273,6 +445,10 @@
 		vcc11-supply = <&vcc_sys>;
 		vcc12-supply = <&vcc_io>;
 		vddio-supply = <&vcc_io>;
+
+		rtc {
+			status = "okay";
+		};
 
 		regulators {
 			vdd_cpu: DCDC_REG1 {
@@ -541,12 +717,23 @@
 
 &i2s {
 	#sound-dai-cells = <0>;
+	rockchip,bclk-fs = <128>;
+	status = "okay";
+};
+
+&iep {
+	status = "okay";
+};
+
+&iep_mmu {
 	status = "okay";
 };
 
 &io_domains {
 	status = "okay";
 
+	flash0-supply = <&vcc_flash>;
+	gpio30-supply = <&vcc_io>;
 	sdcard-supply = <&vccio_sd>;
 	wifi-supply = <&vcc_18>;
 };
@@ -554,7 +741,7 @@
 &sdio0 {
 	status = "okay";
 	clock-frequency = <50000000>;
-	clock-freq-min-max = <200000 50000000>;
+	max-frequency = <50000000>;
 	bus-width = <4>;
 	cap-sd-highspeed;
 	cap-sdio-irq;
@@ -575,7 +762,7 @@
 
 &saradc {
 	vref-supply = <&vcc18_ldo1>;
-	status ="okay";
+	status = "okay";
 };
 
 &sdmmc {
@@ -600,7 +787,6 @@
 &tsadc {
 	rockchip,hw-tshut-mode = <1>; /* tshut mode 0:CRU 1:GPIO */
 	rockchip,hw-tshut-polarity = <1>; /* tshut polarity 0:LOW 1:HIGH */
-	pinctrl-1 = <&otp_out>;
 	status = "okay";
 };
 
@@ -611,6 +797,8 @@
 };
 
 &uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart1_xfer>, <&uart1_cts>, <&uart1_rts>;
 	status = "okay";
 };
 
@@ -619,6 +807,8 @@
 };
 
 &uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_xfer>, <&uart4_cts>, <&uart4_rts>;
 	status = "okay";
 };
 
@@ -636,10 +826,18 @@
 };
 
 &usb_otg {
-	status= "okay";
+	status = "okay";
+};
+
+&video_phy {
+	status = "okay";
 };
 
 &vopb {
+	status = "okay";
+};
+
+&vopl {
 	status = "okay";
 };
 
@@ -647,15 +845,15 @@
 	status = "okay";
 };
 
-&vopl {
+&vopl_mmu {
 	status = "okay";
-	/* Don't use vopl for HDMI */
-	vopl_out: port {
-		/delete-node/ endpoint@0;
-	};
 };
 
-&vopl_mmu {
+&vpu {
+	status = "okay";
+};
+
+&vpu_mmu {
 	status = "okay";
 };
 

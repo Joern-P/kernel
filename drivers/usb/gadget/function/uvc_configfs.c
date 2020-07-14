@@ -973,6 +973,8 @@ static void uvcg_streaming_header_drop_link(struct config_item *src,
 
 	--target_fmt->linked;
 
+	--target_fmt->linked;
+
 out:
 	mutex_unlock(&opts->lock);
 	mutex_unlock(su_mutex);
@@ -2627,13 +2629,11 @@ static int uvcg_streaming_class_create_children(struct config_group *parent)
 
 	for (i = 0; i < ARRAY_SIZE(names); ++i) {
 		struct uvcg_streaming_class_group *group;
-
 		group = kzalloc(sizeof(*group), GFP_KERNEL);
 		if (!group)
 			return -ENOMEM;
 
 		group->name = names[i];
-
 		config_group_init_type_name(&group->group, group->name,
 					    &uvcg_streaming_class_type);
 		configfs_add_default_group(&group->group, parent);

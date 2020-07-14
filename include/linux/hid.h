@@ -305,7 +305,7 @@ struct hid_item {
 /* 
  * Increase this if you need to configure more HID quirks at module load time
  */
-#define MAX_USBHID_BOOT_QUIRKS 4
+#define MAX_USBHID_BOOT_QUIRKS 40
 
 #define HID_QUIRK_INVERT			0x00000001
 #define HID_QUIRK_NOTOUCH			0x00000002
@@ -451,7 +451,7 @@ struct hid_report_enum {
 };
 
 #define HID_MIN_BUFFER_SIZE	64		/* make sure there is at least a packet size of space */
-#define HID_MAX_BUFFER_SIZE	4096		/* 4kb */
+#define HID_MAX_BUFFER_SIZE	8192		/* 8kb */
 #define HID_CONTROL_FIFO_SIZE	256		/* to init devices with >100 reports */
 #define HID_OUTPUT_FIFO_SIZE	64
 

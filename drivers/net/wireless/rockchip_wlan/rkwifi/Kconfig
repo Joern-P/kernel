@@ -13,3 +13,4 @@ config AP6XXX
 	  If you choose to build a module, it'll be called dhd. Say M if
 	  unsure.
 
+source "drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Kconfig"

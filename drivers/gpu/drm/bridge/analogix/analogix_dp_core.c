@@ -655,7 +655,7 @@ static int analogix_dp_set_link_train(struct analogix_dp_device *dp,
 	int i;
 	int retval;
 
-	for (i = 0; i < DP_TRAINING_MAX_COUNT; i++) {
+	for (i = 0; i < DP_TIMEOUT_LOOP_COUNT; i++) {
 		analogix_dp_init_training(dp, count, bwtype);
 		retval = analogix_dp_sw_link_training(dp);
 		if (retval == 0)
@@ -876,6 +876,9 @@ static int analogix_dp_loader_protect(struct drm_connector *connector, bool on)
 	if (on) {
 		pm_runtime_get_sync(dp->dev);
 		dp->dpms_mode = DRM_MODE_DPMS_ON;
+	} else {
+		pm_runtime_put(dp->dev);
+		dp->dpms_mode = DRM_MODE_DPMS_OFF;
 	}
 
 	return 0;

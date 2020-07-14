@@ -650,11 +650,11 @@ static void uart_throttle(struct tty_struct *tty)
 		mask &= ~port->status;
 	}
 
-	if (mask & UPSTAT_AUTOXOFF)
-		uart_send_xchar(tty, STOP_CHAR(tty));
-
 	if (mask & UPSTAT_AUTORTS)
 		uart_clear_mctrl(port, TIOCM_RTS);
+
+	if (mask & UPSTAT_AUTOXOFF)
+		uart_send_xchar(tty, STOP_CHAR(tty));
 }
 
 static void uart_unthrottle(struct tty_struct *tty)
@@ -673,11 +673,11 @@ static void uart_unthrottle(struct tty_struct *tty)
 		mask &= ~port->status;
 	}
 
-	if (mask & UPSTAT_AUTOXOFF)
-		uart_send_xchar(tty, START_CHAR(tty));
-
 	if (mask & UPSTAT_AUTORTS)
 		uart_set_mctrl(port, TIOCM_RTS);
+
+	if (mask & UPSTAT_AUTOXOFF)
+		uart_send_xchar(tty, START_CHAR(tty));
 }
 
 static void do_uart_get_info(struct tty_port *port,
@@ -694,7 +694,7 @@ static void do_uart_get_info(struct tty_port *port,
 	if (HIGH_BITS_OFFSET)
 		retinfo->port_high = (long) uport->iobase >> HIGH_BITS_OFFSET;
 	retinfo->irq		    = uport->irq;
-	retinfo->flags	    = uport->flags;
+	retinfo->flags	    = (__force int)uport->flags;
 	retinfo->xmit_fifo_size  = uport->fifosize;
 	retinfo->baud_base	    = uport->uartclk / 16;
 	retinfo->close_delay	    = jiffies_to_msecs(port->close_delay) / 10;
@@ -768,7 +768,7 @@ static int uart_set_info(struct tty_struct *tty, struct tty_port *port,
 		    new_info->type != uport->type);
 
 	old_flags = uport->flags;
-	new_flags = new_info->flags;
+	new_flags = (__force upf_t)new_info->flags;
 	old_custom_divisor = uport->custom_divisor;
 
 	if (!capable(CAP_SYS_ADMIN)) {
@@ -830,7 +830,7 @@ static int uart_set_info(struct tty_struct *tty, struct tty_port *port,
 		/*
 		 * Free and release old regions
 		 */
-		if (old_type != PORT_UNKNOWN)
+		if (old_type != PORT_UNKNOWN && uport->ops->release_port)
 			uport->ops->release_port(uport);
 
 		uport->iobase = new_port;
@@ -843,7 +843,7 @@ static int uart_set_info(struct tty_struct *tty, struct tty_port *port,
 		/*
 		 * Claim and map the new regions
 		 */
-		if (uport->type != PORT_UNKNOWN) {
+		if (uport->type != PORT_UNKNOWN && uport->ops->request_port) {
 			retval = uport->ops->request_port(uport);
 		} else {
 			/* Always success - Jean II */
@@ -862,7 +862,7 @@ static int uart_set_info(struct tty_struct *tty, struct tty_port *port,
 			uport->regshift = old_shift;
 			uport->mapbase = old_mapbase;
 
-			if (old_type != PORT_UNKNOWN) {
+			if (old_type != PORT_UNKNOWN && uport->ops->request_port) {
 				retval = uport->ops->request_port(uport);
 				/*
 				 * If we failed to restore the old settings,
@@ -1018,7 +1018,7 @@ static int uart_break_ctl(struct tty_struct *tty, int break_state)
 
 	mutex_lock(&port->mutex);
 
-	if (uport->type != PORT_UNKNOWN)
+	if (uport->type != PORT_UNKNOWN && uport->ops->break_ctl)
 		uport->ops->break_ctl(uport, break_state);
 
 	mutex_unlock(&port->mutex);
@@ -1050,7 +1050,7 @@ static int uart_do_autoconfig(struct tty_struct *tty,struct uart_state *state)
 		 * If we already have a port type configured,
 		 * we must release its resources.
 		 */
-		if (uport->type != PORT_UNKNOWN)
+		if (uport->type != PORT_UNKNOWN && uport->ops->release_port)
 			uport->ops->release_port(uport);
 
 		flags = UART_CONFIG_TYPE;
@@ -1977,7 +1977,7 @@ static void uart_change_pm(struct uart_state *state,
 	struct uart_port *port = state->uart_port;
 
 	if (state->pm_state != pm_state) {
-		if (port->ops->pm)
+		if (port && port->ops->pm)
 			port->ops->pm(port, pm_state, state->pm_state);
 		state->pm_state = pm_state;
 	}
@@ -2008,7 +2008,7 @@ int uart_suspend_port(struct uart_driver *drv, struct uart_port *uport)
 	mutex_lock(&port->mutex);
 
 	tty_dev = device_find_child(uport->dev, &match, serial_match_port);
-	if (device_may_wakeup(tty_dev)) {
+	if (tty_dev && device_may_wakeup(tty_dev)) {
 		if (!enable_irq_wake(uport->irq))
 			uport->irq_wake = 1;
 		put_device(tty_dev);
@@ -2676,6 +2676,7 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *uport)
 	if (uport->cons && uport->dev)
 		of_console_check(uport->dev->of_node, uport->cons->name, uport->line);
 
+	tty_port_link_device(port, drv->tty_driver, uport->line);
 	uart_configure_port(drv, state, uport);
 
 	num_groups = 2;
@@ -2774,7 +2775,7 @@ int uart_remove_one_port(struct uart_driver *drv, struct uart_port *uport)
 	/*
 	 * Free the port IO and memory resources, if any.
 	 */
-	if (uport->type != PORT_UNKNOWN)
+	if (uport->type != PORT_UNKNOWN && uport->ops->release_port)
 		uport->ops->release_port(uport);
 	kfree(uport->tty_groups);
 

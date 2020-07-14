@@ -43,10 +43,21 @@
 /dts-v1/;
 #include <dt-bindings/pwm/pwm.h>
 #include "rk3288.dtsi"
-#include "rk3288-linux.dtsi"
+#include "rk3288cg-opp.dtsi"
 
 / {
+	model = "mqmaker MiQi";
 	compatible = "rockchip,rk3288-miqi", "rockchip,rk3288";
+
+	chosen {
+		bootargs = "earlyprintk=uart8250-32bit,0xff690000";
+	};
+
+	cpuinfo {
+		compatible = "rockchip,cpuinfo";
+		nvmem-cells = <&efuse_id>;
+		nvmem-cell-names = "id";
+	};
 
 	memory {
 		device_type = "memory";
@@ -56,29 +67,14 @@
 	sound {
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
-		simple-audio-card,name = "DW-HDMI";
+		simple-audio-card,name = "HDMI";
 		simple-audio-card,mclk-fs = <512>;
-
-		simple-audio-card,dai-link@0 {  /* I2S - S/PDIF */
-			format = "i2s";
-			cpu {
-				sound-dai = <&i2s>;
-			};
-			codec {
-				sound-dai = <&hdmi>;
-			};
+		simple-audio-card,cpu {
+			sound-dai = <&i2s>;
 		};
-
-		/*
-		 * If you want to support more cards,
-		 * you can add more dai-link node,
-		 * such as
-		 *
-		 *   simple-audio-card,dai-link@1 {
-		 *       ......
-		 *   }
-		 */
-
+		simple-audio-card,codec {
+			sound-dai = <&hdmi>;
+		};
 	};
 
 	ext_gmac: external-gmac-clock {
@@ -182,9 +178,95 @@
 	cpu0-supply = <&vdd_cpu>;
 };
 
+&cpu1 {
+	cpu0-supply = <&vdd_cpu>;
+};
+
+&cpu2 {
+	cpu0-supply = <&vdd_cpu>;
+};
+
+&cpu3 {
+	cpu0-supply = <&vdd_cpu>;
+};
+
+&cpu0_opp_table {
+	rockchip,max-volt = <1500000>;
+	/* overclock frequencies below - use governors to set desired freq */
+	opp-1896000000 {
+		opp-hz = /bits/ 64 <1896000000>;
+		opp-microvolt = <1425000>;
+		turbo-mode;
+	};
+	opp-1920000000 {
+		opp-hz = /bits/ 64 <1920000000>;
+		opp-microvolt = <1425000>;
+		turbo-mode;
+	};
+	opp-1992000000 {
+		opp-hz = /bits/ 64 <1992000000>;
+		opp-microvolt = <1450000>;
+		turbo-mode;
+	};
+	opp-2016000000 {
+		opp-hz = /bits/ 64 <2016000000>;
+		opp-microvolt = <1475000>;
+		turbo-mode;
+	};
+	opp-2040000000 {
+		opp-hz = /bits/ 64 <2040000000>;
+		opp-microvolt = <1475000>;
+		turbo-mode;
+	};
+	opp-2064000000 {
+		opp-hz = /bits/ 64 <2064000000>;
+		opp-microvolt = <1475000>;
+		turbo-mode;
+	};
+	opp-2088000000 {
+		opp-hz = /bits/ 64 <2088000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+	};
+	opp-2112000000 {
+		opp-hz = /bits/ 64 <2112000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+	};
+	opp-2136000000 {
+		opp-hz = /bits/ 64 <2136000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+	};
+	opp-2160000000 {
+		opp-hz = /bits/ 64 <2160000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+	};
+	opp-2184000000 {
+		opp-hz = /bits/ 64 <2184000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+	};
+	opp-2208000000 {
+		opp-hz = /bits/ 64 <2208000000>;
+		opp-microvolt = <1500000>;
+		turbo-mode;
+	};
+};
+
 &gpu {
 	status = "okay";
 	mali-supply = <&vdd_gpu>;
+};
+
+/* GPU Devfreq Req Settings */
+&gpu_power_model {
+	// for DDK r14.
+	voltage = <900>;
+	frequency = <500>;
+	static-power = <300>;
+	dynamic-power = <396>;
 };
 
 &emmc {
@@ -203,6 +285,14 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	#sound-dai-cells = <0>;
+	status = "okay";
+};
+
+&hdmi_in_vopb {
+	status = "disabled";
+};
+
+&hdmi_in_vopl {
 	status = "okay";
 };
 
@@ -235,14 +325,14 @@
 	clock_in_out = "input";
 	snps,reset-gpio = <&gpio4 7 0>;
 	snps,reset-active-low;
-	snps,reset-delays-us = <0 10000 1000000>;
+	snps,reset-delays-us = <0 10000 50000>;
 	assigned-clocks = <&cru SCLK_MAC>;
 	assigned-clock-parents = <&ext_gmac>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&rgmii_pins>;
 	tx_delay = <0x30>;
 	rx_delay = <0x10>;
-	status = "ok";
+	status = "okay";
 };
 
 /* ----------------------------------------------------------------------------------
@@ -414,6 +504,15 @@ I2C
 
 &i2s {
 	#sound-dai-cells = <0>;
+	rockchip,bclk-fs = <128>;
+	status = "okay";
+};
+
+&iep {
+	status = "okay";
+};
+
+&iep_mmu {
 	status = "okay";
 };
 
@@ -421,6 +520,17 @@ I2C
 	status = "okay";
 
 	sdcard-supply = <&vccio_sd>;
+};
+
+&saradc {
+	vref-supply = <&vcc_18>;
+	status = "okay";
+};
+
+&tsadc {
+	rockchip,hw-tshut-mode = <0>;
+	rockchip,hw-tshut-polarity = <0>;
+	status = "okay";
 };
 
 &spi2 {
@@ -457,13 +567,28 @@ I2C
 
 &vopb {
 	status = "okay";
-};
-
-&vopb_mmu {
-	status = "okay";
+		vopb_out: port {
+			vopb_out_edp: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&edp_in_vopb>;
+			};
+		};
 };
 
 &vopl {
+	status = "okay";
+	vopl_out: port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vopl_out_hdmi: endpoint@0 {
+			reg = <0>;
+			remote-endpoint = <&hdmi_in_vopl>;
+		};
+	};
+};
+
+&vopb_mmu {
 	status = "okay";
 };
 
@@ -539,4 +664,3 @@ I2C
 	};
 
 };
-

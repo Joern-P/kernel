@@ -39,11 +39,6 @@
 #include <linux/input/mt.h>
 #include <linux/input/touchscreen.h>
 #include <linux/of_device.h>
-#include <linux/platform_data/ctouch.h>
-
-#if defined(CONFIG_DRM_PANEL_FRIENDLYELEC)
-extern void panel_get_display_size(int *w, int *h);
-#endif
 
 #define WORK_REGISTER_THRESHOLD		0x00
 #define WORK_REGISTER_REPORT_RATE	0x08
@@ -96,10 +91,6 @@ struct edt_ft5x06_ts_data {
 
 	struct gpio_desc *reset_gpio;
 	struct gpio_desc *wake_gpio;
-	int max_x;
-	int max_y;
-	bool invert_x;
-	bool invert_y;
 
 #if defined(CONFIG_DEBUG_FS)
 	struct dentry *debug_dir;
@@ -185,9 +176,6 @@ static irqreturn_t edt_ft5x06_ts_isr(int irq, void *dev_id)
 	int i, type, x, y, id;
 	int offset, tplen, datalen, crclen;
 	int error;
-#if defined(CONFIG_TOUCHSCREEN_PROT_MT_SYNC)
-	int touch_point = 0;
-#endif
 
 	switch (tsdata->version) {
 	case M06:
@@ -252,23 +240,6 @@ static irqreturn_t edt_ft5x06_ts_isr(int irq, void *dev_id)
 		id = (buf[2] >> 4) & 0x0f;
 		down = type != TOUCH_EVENT_UP;
 
-		if (tsdata->invert_x)
-			x = tsdata->max_x - x;
-
-		if (tsdata->invert_y)
-			y = tsdata->max_y - y;
-
-#if defined(CONFIG_TOUCHSCREEN_PROT_MT_SYNC)
-		if (down) {
-			touch_point++;
-
-			input_report_abs(tsdata->input, ABS_MT_POSITION_X, x);
-			input_report_abs(tsdata->input, ABS_MT_POSITION_Y, y);
-			input_report_abs(tsdata->input, ABS_MT_TOUCH_MAJOR, 64);
-			input_report_abs(tsdata->input, ABS_MT_TRACKING_ID, id);
-			input_mt_sync(tsdata->input);
-		}
-#else
 		input_mt_slot(tsdata->input, id);
 		input_mt_report_slot_state(tsdata->input, MT_TOOL_FINGER, down);
 
@@ -277,15 +248,9 @@ static irqreturn_t edt_ft5x06_ts_isr(int irq, void *dev_id)
 
 		input_report_abs(tsdata->input, ABS_MT_POSITION_X, x);
 		input_report_abs(tsdata->input, ABS_MT_POSITION_Y, y);
-#endif
 	}
 
-#if defined(CONFIG_TOUCHSCREEN_PROT_MT_SYNC)
-	if (!touch_point)
-		input_mt_sync(tsdata->input);
-#else
 	input_mt_report_pointer_emulation(tsdata->input, true);
-#endif
 	input_sync(tsdata->input);
 
 out:
@@ -835,7 +800,7 @@ static int edt_ft5x06_ts_identify(struct i2c_client *client,
 		if (error)
 			return error;
 
-		sprintf(fw_version, "%d.%d", rdbuf[0], rdbuf[1]);
+		strlcpy(fw_version, rdbuf, 2);
 
 		error = edt_ft5x06_ts_readwrite(client, 1, "\xA8",
 						1, rdbuf);
@@ -856,20 +821,23 @@ static void edt_ft5x06_ts_get_defaults(struct device *dev,
 	u32 val;
 	int error;
 
-	tsdata->invert_x = device_property_read_bool(dev, "touchscreen-inverted-x");
-	tsdata->invert_y = device_property_read_bool(dev, "touchscreen-inverted-y");
-
 	error = device_property_read_u32(dev, "threshold", &val);
-	if (!error)
-		reg_addr->reg_threshold = val;
+	if (!error) {
+		edt_ft5x06_register_write(tsdata, reg_addr->reg_threshold, val);
+		tsdata->threshold = val;
+	}
 
 	error = device_property_read_u32(dev, "gain", &val);
-	if (!error)
-		reg_addr->reg_gain = val;
+	if (!error) {
+		edt_ft5x06_register_write(tsdata, reg_addr->reg_gain, val);
+		tsdata->gain = val;
+	}
 
 	error = device_property_read_u32(dev, "offset", &val);
-	if (!error)
-		reg_addr->reg_offset = val;
+	if (!error) {
+		edt_ft5x06_register_write(tsdata, reg_addr->reg_offset, val);
+		tsdata->offset = val;
+	}
 }
 
 static void
@@ -918,20 +886,13 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
 {
 	const struct edt_i2c_chip_data *chip_data;
 	struct edt_ft5x06_ts_data *tsdata;
+	u8 buf[2] = { 0xfc, 0x00 };
 	struct input_dev *input;
 	unsigned long irq_flags;
-	int ctp_id;
 	int error;
 	char fw_version[EDT_NAME_LEN];
 
 	dev_dbg(&client->dev, "probing for EDT FT5x06 I2C\n");
-
-	ctp_id = panel_get_touch_id();
-	if (ctp_id != CTP_FT5X06 &&
-		ctp_id != CTP_FT5526_KR &&
-		ctp_id != CTP_AUTO) {
-		return -ENODEV;
-	}
 
 	tsdata = devm_kzalloc(&client->dev, sizeof(*tsdata), GFP_KERNEL);
 	if (!tsdata) {
@@ -995,6 +956,12 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
 		return error;
 	}
 
+	/*
+	 * Dummy read access. EP0700MLP1 returns bogus data on the first
+	 * register read access and ignores writes.
+	 */
+	edt_ft5x06_ts_readwrite(tsdata->client, 2, buf, 2, buf);
+
 	edt_ft5x06_ts_set_regs(tsdata);
 	edt_ft5x06_ts_get_defaults(&client->dev, tsdata);
 	edt_ft5x06_ts_get_parameters(tsdata);
@@ -1007,41 +974,19 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
 	input->id.bustype = BUS_I2C;
 	input->dev.parent = &client->dev;
 
-	tsdata->max_x = tsdata->num_x * 64 - 1;
-	tsdata->max_y = tsdata->num_y * 64 - 1;
-
-#if defined(CONFIG_DRM_PANEL_FRIENDLYELEC)
-	panel_get_display_size(&tsdata->max_x, &tsdata->max_y);
-
-	if (ctp_id == CTP_FT5526_KR) {
-		tsdata->invert_x = true;
-		tsdata->invert_y = true;
-		tsdata->max_support_points = 10;
-		dev_info(&client->dev, "FT5526_KR, Rev%s\n", fw_version);
-	}
-#endif
-
 	input_set_abs_params(input, ABS_MT_POSITION_X,
-			     0, tsdata->max_x, 0, 0);
+			     0, tsdata->num_x * 64 - 1, 0, 0);
 	input_set_abs_params(input, ABS_MT_POSITION_Y,
-			     0, tsdata->max_y, 0, 0);
+			     0, tsdata->num_y * 64 - 1, 0, 0);
 
 	touchscreen_parse_properties(input, true);
 
-#if defined(CONFIG_TOUCHSCREEN_PROT_MT_SYNC)
-	input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 100, 0, 0);
-	input_set_abs_params(input, ABS_MT_TRACKING_ID,
-			     0, tsdata->max_support_points, 0, 0);
-
-	set_bit(INPUT_PROP_DIRECT, input->propbit);
-#else
 	error = input_mt_init_slots(input, tsdata->max_support_points,
 				INPUT_MT_DIRECT);
 	if (error) {
 		dev_err(&client->dev, "Unable to init MT slots.\n");
 		return error;
 	}
-#endif
 
 	input_set_drvdata(input, tsdata);
 	i2c_set_clientdata(client, tsdata);
@@ -1069,8 +1014,6 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
 
 	edt_ft5x06_ts_prepare_debugfs(tsdata, dev_driver_string(&client->dev));
 	device_init_wakeup(&client->dev, 1);
-
-	panel_set_touch_id(CTP_FT5X06);
 
 	dev_dbg(&client->dev,
 		"EDT FT5x06 initialized: IRQ %d, WAKE pin %d, Reset pin %d.\n",

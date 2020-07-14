@@ -82,6 +82,12 @@ config BT_HCIUART
 	  Say Y here to compile support for Bluetooth UART devices into the
 	  kernel or say M to compile it as module (hci_uart).
 
+config BT_HCIUART_SERDEV
+	bool
+	depends on SERIAL_DEV_BUS && BT_HCIUART
+	depends on SERIAL_DEV_BUS=y || SERIAL_DEV_BUS=BT_HCIUART
+	default y
+
 config BT_HCIUART_H4
 	bool "UART (H4) protocol support"
 	depends on BT_HCIUART
@@ -119,7 +125,7 @@ config BT_HCIUART_ATH3K
 
 config BT_HCIUART_LL
 	bool "HCILL protocol support"
-	depends on BT_HCIUART
+	depends on BT_HCIUART_SERDEV
 	help
 	  HCILL (HCI Low Level) is a serial protocol for communication
 	  between Bluetooth device and host. This protocol is required for
@@ -154,6 +160,7 @@ config BT_HCIUART_INTEL
 config BT_HCIUART_BCM
 	bool "Broadcom protocol support"
 	depends on BT_HCIUART
+	depends on BT_HCIUART_SERDEV
 	select BT_HCIUART_H4
 	select BT_BCM
 	help
@@ -326,4 +333,9 @@ config BT_WILINK
 	  Say Y here to compile support for Texas Instrument's WiLink7 driver
 	  into the kernel or say M to compile it as module (btwilink).
 
+config BT_BCM4359
+	bool "Enable BCM4359 driver"
+	default n
+	help
+	  Adds BCM4359 RFKILL driver, default is n
 endmenu

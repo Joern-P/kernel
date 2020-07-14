@@ -17,8 +17,8 @@
  * Set Firmware Path
  */
  
-#define VENDOR_ETC_FIRMWARE "/vendor/etc/firmware/"
-#define SYSTEM_ETC_FIRMWARE "/system/etc/firmware/"
+#define VENDOR_ETC_FIRMWARE "/lib/firmware/"
+#define SYSTEM_ETC_FIRMWARE "/lib/firmware/"
 char ANDROID_FW_PATH[64] = {0};
 
 extern int get_wifi_chip_type(void);
@@ -75,13 +75,18 @@ if (chip == WIFI_AP6234) {
 }
 
 if (chip == WIFI_AP6255) {
-	sprintf(fw, "%s%s", ANDROID_FW_PATH, "fw_bcm43455c0_ag.bin");
-	sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_ap6255.txt");
+	sprintf(fw, "%s%s", ANDROID_FW_PATH, "brcm/fw_bcm43455c0_ag.bin");
+	sprintf(nvram, "%s%s", ANDROID_FW_PATH, "brcm/nvram_ap6255.txt");
 }
 
 if (chip == WIFI_AP6256) {
-    sprintf(fw, "%s%s", ANDROID_FW_PATH, "fw_bcm43456C5_ag.bin");
-    sprintf(nvram, "%s%s", ANDROID_FW_PATH, "nvram_ap6256.txt");
+    sprintf(fw, "%s%s", ANDROID_FW_PATH, "brcm/fw_bcm43456c5_ag.bin");
+    sprintf(nvram, "%s%s", ANDROID_FW_PATH, "brcm/nvram_ap6256.txt");
+}
+
+if (chip == WIFI_AP6359SA) {
+    sprintf(fw, "%s%s", ANDROID_FW_PATH, "brcm/fw_bcm4359c0_ag.bin");
+	sprintf(nvram, "%s%s", ANDROID_FW_PATH, "brcm/nvram_ap6359sa.txt");
 }
 
 if (chip == WIFI_AP6441) {

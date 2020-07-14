@@ -57,6 +57,7 @@ static struct clk *rockchip_clk_register_branch(const char *name,
 	struct clk_divider *div = NULL;
 	const struct clk_ops *mux_ops = NULL, *div_ops = NULL,
 			     *gate_ops = NULL;
+	int ret;
 
 	if (num_parents > 1) {
 		mux = kzalloc(sizeof(*mux), GFP_KERNEL);
@@ -75,8 +76,10 @@ static struct clk *rockchip_clk_register_branch(const char *name,
 
 	if (gate_offset >= 0) {
 		gate = kzalloc(sizeof(*gate), GFP_KERNEL);
-		if (!gate)
+		if (!gate) {
+			ret = -ENOMEM;
 			goto err_gate;
+		}
 
 		gate->flags = gate_flags;
 		gate->reg = base + gate_offset;
@@ -87,8 +90,10 @@ static struct clk *rockchip_clk_register_branch(const char *name,
 
 	if (div_width > 0) {
 		div = kzalloc(sizeof(*div), GFP_KERNEL);
-		if (!div)
+		if (!div) {
+			ret = -ENOMEM;
 			goto err_div;
+		}
 
 		div->flags = div_flags;
 		if (div_offset)
@@ -110,12 +115,19 @@ static struct clk *rockchip_clk_register_branch(const char *name,
 				     gate ? &gate->hw : NULL, gate_ops,
 				     flags);
 
+	if (IS_ERR(clk)) {
+		ret = PTR_ERR(clk);
+		goto err_composite;
+	}
+	
 	return clk;
+err_composite:
+	kfree(div);
 err_div:
 	kfree(gate);
 err_gate:
 	kfree(mux);
-	return ERR_PTR(-ENOMEM);
+	return ERR_PTR(ret);
 }
 
 struct rockchip_clk_frac {
@@ -176,6 +188,7 @@ static void rockchip_fractional_approximation(struct clk_hw *hw,
 {
 	struct clk_fractional_divider *fd = to_clk_fd(hw);
 	unsigned long p_rate, p_parent_rate;
+	unsigned long min_rate = 0, max_rate = 0;
 	struct clk_hw *p_parent;
 	unsigned long scale;
 	u32 div;
@@ -185,16 +198,24 @@ static void rockchip_fractional_approximation(struct clk_hw *hw,
 	    (fd->max_prate && fd->max_prate < p_rate)) {
 		p_parent = clk_hw_get_parent(clk_hw_get_parent(hw));
 		if (!p_parent) {
-			*parent_rate = p_rate;
+			p_parent_rate = p_rate;
 		} else {
 			p_parent_rate = clk_hw_get_rate(p_parent);
-			*parent_rate = p_parent_rate;
 			if (fd->max_prate && p_parent_rate > fd->max_prate) {
 				div = DIV_ROUND_UP(p_parent_rate,
 						   fd->max_prate);
-				*parent_rate = p_parent_rate / div;
+				p_parent_rate = p_parent_rate / div;
 			}
 		}
+
+		clk_hw_get_boundaries(clk_hw_get_parent(hw),
+			&min_rate, &max_rate);
+		if (p_parent_rate < min_rate)
+			p_parent_rate = min_rate;
+		if (p_parent_rate > max_rate)
+			p_parent_rate = max_rate;
+
+		*parent_rate = p_parent_rate;
 
 		if (*parent_rate < rate * 20) {
 			pr_warn("%s p_rate(%ld) is low than rate(%ld)*20, use integer or half-div\n",
@@ -315,8 +336,10 @@ static struct clk *rockchip_clk_register_frac_branch(
 		init.num_parents = child->num_parents;
 
 		mux_clk = clk_register(NULL, &frac_mux->hw);
-		if (IS_ERR(mux_clk))
+		if (IS_ERR(mux_clk)) {
+			kfree(frac);
 			return clk;
+		}
 
 		rockchip_clk_add_lookup(ctx, mux_clk, child->id);
 

@@ -300,6 +300,10 @@ static int btsdio_probe(struct sdio_func *func,
 	    !mmc_card_is_removable(func->card->host))
 		return -ENODEV;
 
+	if (func->vendor == SDIO_VENDOR_ID_BROADCOM &&
+	    func->device == SDIO_DEVICE_ID_BROADCOM_4359)
+		return -ENODEV;
+
 	data = devm_kzalloc(&func->dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;

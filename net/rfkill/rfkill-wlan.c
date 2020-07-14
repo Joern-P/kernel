@@ -45,7 +45,7 @@
 #endif
 #include <linux/soc/rockchip/rk_vendor_storage.h>
 
-#if 0
+#if 1
 #define DBG(x...)   printk(KERN_INFO "[WLAN_RFKILL]: "x)
 #else
 #define DBG(x...)
@@ -120,6 +120,8 @@ int get_wifi_chip_type(void)
 	type = WIFI_AP6255;
     } else if (strcmp(wifi_chip_type_string, "ap6256") == 0) {
 	type = WIFI_AP6256;
+    } else if (strcmp(wifi_chip_type_string, "ap6359sa") == 0) {
+	type = WIFI_AP6359SA;
     } else if (strcmp(wifi_chip_type_string, "ap6330") == 0) {
         type = WIFI_AP6330;
     } else if (strcmp(wifi_chip_type_string, "ap6335") == 0) {

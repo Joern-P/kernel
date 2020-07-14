@@ -505,6 +505,7 @@ int cap_bprm_set_creds(struct linux_binprm *bprm)
 	int ret;
 	kuid_t root_uid;
 
+	new->cap_ambient = old->cap_ambient;
 	if (WARN_ON(!cap_ambient_invariant_ok(old)))
 		return -EPERM;
 
@@ -1069,12 +1070,14 @@ int cap_mmap_addr(unsigned long addr)
 	}
 	return ret;
 }
+EXPORT_SYMBOL_GPL(cap_mmap_addr);
 
 int cap_mmap_file(struct file *file, unsigned long reqprot,
 		  unsigned long prot, unsigned long flags)
 {
 	return 0;
 }
+EXPORT_SYMBOL_GPL(cap_mmap_file);
 
 #ifdef CONFIG_SECURITY
 

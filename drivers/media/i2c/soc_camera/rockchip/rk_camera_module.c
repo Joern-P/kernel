@@ -293,7 +293,7 @@ static struct pltfrm_camera_module_data *pltfrm_camera_module_get_data(
 	struct i2c_client *fl_ctrl_client = NULL;
 	struct pltfrm_camera_module_data *pdata = NULL;
 	struct property *prop;
-	int i;
+	unsigned int i;
 
 	pltfrm_camera_module_pr_debug(sd, "\n");
 

@@ -22,4 +22,3 @@
 		clock-latency-ns = <40000>;
 	};
 };
-

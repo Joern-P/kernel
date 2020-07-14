@@ -133,6 +133,10 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 	struct mmc_command *cmd = mrq->cmd;
 	int err = cmd->error;
 
+	/* Trigger the LED (if available) */
+	ledtrig_disk_activity();
+	ledtrig_disk_activity_inverted();
+
 	/* Flag re-tuning needed on CRC errors */
 	if ((cmd->opcode != MMC_SEND_TUNING_BLOCK &&
 	    cmd->opcode != MMC_SEND_TUNING_BLOCK_HS200) &&
@@ -157,7 +161,7 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 	} else {
 		mmc_should_fail_request(host, mrq);
 
-		led_trigger_event(host->led, LED_OFF);
+		/* led_trigger_event(host->led, LED_OFF); */
 
 		if (mrq->sbc) {
 			pr_debug("%s: req done <CMD%u>: %d: %08x %08x %08x %08x\n",
@@ -306,7 +310,7 @@ static int mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 			mrq->stop->mrq = mrq;
 		}
 	}
-	led_trigger_event(host->led, LED_FULL);
+	/* led_trigger_event(host->led, LED_FULL); */
 	__mmc_start_request(host, mrq);
 
 	return 0;
@@ -1578,22 +1582,6 @@ u32 mmc_select_voltage(struct mmc_host *host, u32 ocr)
 	return ocr;
 }
 
-int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
-{
-	int err = 0;
-	int old_signal_voltage = host->ios.signal_voltage;
-
-	host->ios.signal_voltage = signal_voltage;
-	if (host->ops->start_signal_voltage_switch)
-		err = host->ops->start_signal_voltage_switch(host, &host->ios);
-
-	if (err)
-		host->ios.signal_voltage = old_signal_voltage;
-
-	return err;
-
-}
-
 void mmc_set_initial_signal_voltage(struct mmc_host *host)
 {
 	/* Try to set signal voltage to 3.3V but fall back to 1.8v or 1.2v */
@@ -1605,7 +1593,7 @@ void mmc_set_initial_signal_voltage(struct mmc_host *host)
 		dev_dbg(mmc_dev(host), "Initial signal voltage of 1.2v\n");
 }
 
-int mmc_host_set_uhs_voltage(struct mmc_host *host)
+int mmc_host_set_uhs_voltage(struct mmc_host *host, int signal_voltage)
 {
 	u32 clock;
 
@@ -1628,7 +1616,23 @@ int mmc_host_set_uhs_voltage(struct mmc_host *host)
 	return 0;
 }
 
-int mmc_set_uhs_voltage(struct mmc_host *host, u32 ocr)
+int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
+{
+	int err = 0;
+	int old_signal_voltage = host->ios.signal_voltage;
+
+	host->ios.signal_voltage = signal_voltage;
+	if (host->ops->start_signal_voltage_switch)
+		err = host->ops->start_signal_voltage_switch(host, &host->ios);
+
+	if (err)
+		host->ios.signal_voltage = old_signal_voltage;
+
+	return err;
+
+}
+
+int mmc_set_uhs_voltage(struct mmc_host *host, int signal_voltage, u32 ocr)
 {
 	struct mmc_command cmd = {0};
 	int err = 0;
@@ -1666,7 +1670,7 @@ int mmc_set_uhs_voltage(struct mmc_host *host, u32 ocr)
 		goto power_cycle;
 	}
 
-	if (mmc_host_set_uhs_voltage(host)) {
+	if (mmc_host_set_uhs_voltage(host, signal_voltage)) {
 		/*
 		 * Voltages may not have been switched, but we've already
 		 * sent CMD11, so a power cycle is required anyway

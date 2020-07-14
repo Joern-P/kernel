@@ -1248,7 +1248,6 @@ static int __init rockchip_iommu_init_driver(void)
 
 	np = of_find_matching_node(NULL, iommu_dt_ids);
 	if (!np) {
-		pr_err("Failed to find legacy iommu devices\n");
 		return -ENODEV;
 	}
 

@@ -1762,7 +1762,6 @@ rockchip_mipidphy_notifier_bound(struct v4l2_async_notifier *notifier,
 	struct sensor_async_subdev *s_asd = container_of(asd,
 					struct sensor_async_subdev, asd);
 	struct mipidphy_sensor *sensor;
-	struct v4l2_async_subdev *wasd, *next;
 	unsigned int pad, ret;
 
 	if (priv->num_sensors == ARRAY_SIZE(priv->sensors))
@@ -1796,12 +1795,6 @@ rockchip_mipidphy_notifier_bound(struct v4l2_async_notifier *notifier,
 			"failed to create link for %s\n",
 			sensor->sd->name);
 		return ret;
-	}
-
-	list_for_each_entry_safe(wasd, next, &notifier->waiting, list) {
-		/* Remove asd that should not be bound */
-		if (wasd != asd)
-			list_del(&wasd->list);
 	}
 
 	return 0;

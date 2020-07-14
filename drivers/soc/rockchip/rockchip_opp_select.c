@@ -624,7 +624,6 @@ void rockchip_of_get_pvtm_sel(struct device *dev, struct device_node *np,
 
 	ret = rockchip_get_pvtm_specific_value(dev, np, clk, reg, &pvtm);
 	if (ret) {
-		dev_err(dev, "Failed to get pvtm\n");
 		goto out;
 	}
 

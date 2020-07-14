@@ -381,10 +381,11 @@ static ssize_t utilisation_show(struct device *dev,
 	unsigned long total_time;
 	unsigned long busy_time;
 	unsigned long utilisation;
-
+#if defined(CONFIG_MALI_DEVFREQ) || defined(CONFIG_MALI_MIDGARD_DVFS)
 	kbase_pm_reset_dvfs_utilisation(kbdev);
 	usleep_range(period_in_us, period_in_us + 100);
 	kbase_pm_get_dvfs_utilisation(kbdev, &total_time, &busy_time);
+#endif
 	/* 'devfreq_dev_profile' instance registered to devfreq
 	 * also uses kbase_pm_reset_dvfs_utilisation
 	 * and kbase_pm_get_dvfs_utilisation.

@@ -205,7 +205,9 @@ extern int mali_platform_device_unregister(void);
 #endif
 #endif
 
+#ifdef CONFIG_OF
 extern int rk_platform_init_opp_table(struct device *dev);
+#endif
 
 /* Linux power management operations provided by the Mali device driver */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29))
@@ -577,9 +579,11 @@ static int mali_probe(struct platform_device *pdev)
 	}
 #endif /* LINUX_VERSION_CODE >= 3, 12, 0 */
 
+#ifdef CONFIG_PM
 	err = rk_platform_init_opp_table(mdev->dev);
 	if (err)
 		MALI_DEBUG_PRINT(3, ("Failed to init_opp_table\n"));
+#endif
 
 	/* Need to name the gpu clock "clk_mali" in the device tree */
 	mdev->clock = clk_get(mdev->dev, "clk_mali");

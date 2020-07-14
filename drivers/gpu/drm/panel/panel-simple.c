@@ -1327,6 +1327,48 @@ static const struct panel_desc boe_nv125fhm_n73 = {
 	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
 };
 
+static const struct display_timing boe_nv140fhmn49_timing = {
+	.pixelclock = { 100000000, 148500000, 160000000 },
+	.hactive = { 1920, 1920, 1920 },
+	.hfront_porch = { 48, 48, 48 },
+	.hback_porch = { 80, 80, 80 },
+	.hsync_len = { 32, 32, 32 },
+	.vactive = { 1080, 1080, 1080 },
+	.vfront_porch = { 3, 3, 3 },
+	.vback_porch = { 24, 24, 24 },
+	.vsync_len = { 5, 5, 5 },
+};
+
+static const struct drm_display_mode boe_nv140fhmn49_mode = {
+	.clock = 148500,
+	.hdisplay = 1920,
+	.hsync_start = 1920 + 48,
+	.hsync_end = 1920 + 48 + 32,
+	.htotal = 1920 + 48 + 32 + 80,
+	.vdisplay = 1080,
+	.vsync_start = 1080 + 3,
+	.vsync_end = 1080 + 3 + 5,
+	.vtotal = 1080 + 3 + 5 + 23,
+	.vrefresh = 60,
+};
+
+static const struct panel_desc boe_nv140fhmn49 = {
+	//.modes = &boe_nv140fhmn49_mode,
+	//.num_modes = 1,
+	.timings = &boe_nv140fhmn49_timing,
+	.num_timings = 1,
+	.bpc = 8,
+	.size = {
+		.width = 309,
+		.height = 174,
+	},
+	.delay = {
+		.prepare = 210,
+		.enable = 100,
+		.unprepare = 160,
+	},
+};
+
 static const struct drm_display_mode chunghwa_claa070wp03xg_mode = {
 	.clock = 67000,
 	.hdisplay = 800,

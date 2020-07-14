@@ -45,7 +45,7 @@
 #include "dw-hdmi-cec.h"
 #include "dw-hdmi-hdcp.h"
 
-#define HDMI_EDID_LEN		512
+// define HDMI_EDID_LEN		512
 #define DDC_SEGMENT_ADDR       0x30
 
 enum hdmi_datamap {
@@ -227,7 +227,10 @@ struct dw_hdmi {
 
 	int vic;
 
-	u8 edid[HDMI_EDID_LEN];
+	struct edid *cached_edid;
+	enum drm_connector_status last_connector_status;
+
+	//u8 edid[HDMI_EDID_LEN];
 	bool cable_plugin;
 
 	struct {
@@ -238,7 +241,6 @@ struct dw_hdmi {
 	} phy;
 
 	struct drm_display_mode previous_mode;
-	int preferred_mode;
 
 	struct i2c_adapter *ddc;
 	void __iomem *regs;
@@ -277,6 +279,7 @@ struct dw_hdmi {
 	void (*disable_audio)(struct dw_hdmi *hdmi);
 
 	bool initialized;		/* hdmi is enabled before bind */
+	bool modes_init;
 };
 
 #define HDMI_IH_PHY_STAT0_RX_SENSE \
@@ -643,14 +646,18 @@ static struct i2c_adapter *dw_hdmi_i2c_adapter(struct dw_hdmi *hdmi)
 static void hdmi_set_cts_n(struct dw_hdmi *hdmi, unsigned int cts,
 			   unsigned int n)
 {
-	/* Must be set/cleared first */
-	hdmi_modb(hdmi, 0, HDMI_AUD_CTS3_CTS_MANUAL, HDMI_AUD_CTS3);
+	/* Use Auto CTS mode with CTS is unknown */
+	if (cts) {
+		/* Must be set/cleared first */
+		hdmi_modb(hdmi, 0, HDMI_AUD_CTS3_CTS_MANUAL, HDMI_AUD_CTS3);
 
-	/* nshift factor = 0 */
-	hdmi_modb(hdmi, 0, HDMI_AUD_CTS3_N_SHIFT_MASK, HDMI_AUD_CTS3);
+		/* nshift factor = 0 */
+		hdmi_modb(hdmi, 0, HDMI_AUD_CTS3_N_SHIFT_MASK, HDMI_AUD_CTS3);
 
-	hdmi_writeb(hdmi, ((cts >> 16) & HDMI_AUD_CTS3_AUDCTS19_16_MASK) |
-		    HDMI_AUD_CTS3_CTS_MANUAL, HDMI_AUD_CTS3);
+		hdmi_writeb(hdmi, ((cts >> 16) & HDMI_AUD_CTS3_AUDCTS19_16_MASK) |
+			    HDMI_AUD_CTS3_CTS_MANUAL, HDMI_AUD_CTS3);
+	} else
+		hdmi_writeb(hdmi, 0, HDMI_AUD_CTS3);
 	hdmi_writeb(hdmi, (cts >> 8) & 0xff, HDMI_AUD_CTS2);
 	hdmi_writeb(hdmi, cts & 0xff, HDMI_AUD_CTS1);
 
@@ -777,24 +784,30 @@ static void hdmi_set_clk_regenerator(struct dw_hdmi *hdmi,
 {
 	unsigned long ftdms = pixel_clk;
 	unsigned int n, cts;
+	u8 config3;
 	u64 tmp;
 
 	n = hdmi_find_n(hdmi, pixel_clk, sample_rate);
 
-	/*
-	 * Compute the CTS value from the N value.  Note that CTS and N
-	 * can be up to 20 bits in total, so we need 64-bit math.  Also
-	 * note that our TDMS clock is not fully accurate; it is accurate
-	 * to kHz.  This can introduce an unnecessary remainder in the
-	 * calculation below, so we don't try to warn about that.
-	 */
-	tmp = (u64)ftdms * n;
-	do_div(tmp, 128 * sample_rate);
-	cts = tmp;
+	config3 = hdmi_readb(hdmi, HDMI_CONFIG3_ID);
 
-	dev_dbg(hdmi->dev, "%s: fs=%uHz ftdms=%lu.%03luMHz N=%d cts=%d\n",
-		__func__, sample_rate, ftdms / 1000000, (ftdms / 1000) % 1000,
-		n, cts);
+	if (config3 & HDMI_CONFIG3_AHBAUDDMA) {
+		/*
+		 * Compute the CTS value from the N value.  Note that CTS and N
+		 * can be up to 20 bits in total, so we need 64-bit math.  Also
+		 * note that our TDMS clock is not fully accurate; it is accurate
+		 * to kHz.  This can introduce an unnecessary remainder in the
+		 * calculation below, so we don't try to warn about that.
+		 */
+		tmp = (u64)ftdms * n;
+		do_div(tmp, 128 * sample_rate);
+		cts = tmp;
+
+		dev_dbg(hdmi->dev, "%s: fs=%uHz ftdms=%lu.%03luMHz N=%d cts=%d\n",
+			__func__, sample_rate, ftdms / 1000000, (ftdms / 1000) % 1000,
+			n, cts);
+	} else
+		cts = 0;
 
 	spin_lock_irq(&hdmi->audio_lock);
 	hdmi->audio_n = n;
@@ -1591,13 +1604,7 @@ static int hdmi_phy_configure(struct dw_hdmi *hdmi)
 
 	dw_hdmi_phy_power_off(hdmi);
 
-	/* Control for TMDS Bit Period/TMDS Clock-Period Ratio */
-	if (hdmi->connector.display_info.hdmi.scdc.supported) {
-		if (mtmdsclock > 340000000)
-			drm_scdc_set_high_tmds_clock_ratio(hdmi->ddc, 1);
-		else
-			drm_scdc_set_high_tmds_clock_ratio(hdmi->ddc, 0);
-	}
+	dw_hdmi_set_high_tmds_clock_ratio(hdmi);
 
 	/* Leave low power consumption mode by asserting SVSRET. */
 	if (phy->has_svsret)
@@ -1719,14 +1726,6 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	/* Initialise info frame from DRM mode */
 	drm_hdmi_avi_infoframe_from_display_mode(&frame, mode, is_hdmi2);
 
-	if (hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_out_bus_format)) {
-		frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
-		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_FULL;
-	} else {
-		frame.quantization_range = HDMI_QUANTIZATION_RANGE_LIMITED;
-		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_LIMITED;
-	}
-
 	/*
 	 * Ignore monitor selectable quantization, use quantization set
 	 * by the user
@@ -1775,15 +1774,9 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 		break;
 	}
 
-	frame.scan_mode = HDMI_SCAN_MODE_NONE;
-
-	if (hdmi_bus_fmt_is_rgb(hdmi->hdmi_data.enc_out_bus_format)) {
-		frame.quantization_range = HDMI_QUANTIZATION_RANGE_FULL;
-		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_FULL;
-	} else {
-		frame.quantization_range = HDMI_QUANTIZATION_RANGE_LIMITED;
-		frame.ycc_quantization_range = HDMI_YCC_QUANTIZATION_RANGE_LIMITED;
-	}
+	frame.scan_mode = HDMI_SCAN_MODE_UNDERSCAN;
+	frame.content_type = HDMI_CONTENT_TYPE_GRAPHICS;
+	frame.itc = true;
 
 	/*
 	 * The Designware IP uses a different byte format from standard
@@ -2490,6 +2483,7 @@ static void dw_hdmi_poweroff(struct dw_hdmi *hdmi)
 static void dw_hdmi_update_power(struct dw_hdmi *hdmi)
 {
 	int force = hdmi->force;
+	u8 old_mask = hdmi->phy_mask;
 
 	if (hdmi->disabled) {
 		force = DRM_FORCE_OFF;
@@ -2511,24 +2505,19 @@ static void dw_hdmi_update_power(struct dw_hdmi *hdmi)
 		if (!hdmi->bridge_is_on)
 			dw_hdmi_poweron(hdmi);
 	}
-}
 
-/*
- * Adjust the detection of RXSENSE according to whether we have a forced
- * connection mode enabled, or whether we have been disabled.  There is
- * no point processing RXSENSE interrupts if we have a forced connection
- * state, or DRM has us disabled.
- *
- * We also disable rxsense interrupts when we think we're disconnected
- * to avoid floating TDMS signals giving false rxsense interrupts.
- *
- * Note: we still need to listen for HPD interrupts even when DRM has us
- * disabled so that we can detect a connect event.
- */
-static void dw_hdmi_update_phy_mask(struct dw_hdmi *hdmi)
-{
-	u8 old_mask = hdmi->phy_mask;
-
+	/* dw_hdmi_update_phy_mask:
+	 * Adjust the detection of RXSENSE according to whether we have a forced
+	 * connection mode enabled, or whether we have been disabled.  There is
+	 * no point processing RXSENSE interrupts if we have a forced connection
+	 * state, or DRM has us disabled.
+	 *
+	 * We also disable rxsense interrupts when we think we're disconnected
+	 * to avoid floating TDMS signals giving false rxsense interrupts.
+	 *
+	 * Note: we still need to listen for HPD interrupts even when DRM has us
+	 * disabled so that we can detect a connect event.
+	*/
 	if (hdmi->force || hdmi->disabled || !hdmi->rxsense)
 		hdmi->phy_mask |= HDMI_PHY_RX_SENSE;
 	else
@@ -2559,7 +2548,6 @@ static void dw_hdmi_bridge_disable(struct drm_bridge *bridge)
 	mutex_lock(&hdmi->mutex);
 	hdmi->disabled = true;
 	dw_hdmi_update_power(hdmi);
-	dw_hdmi_update_phy_mask(hdmi);
 	mutex_unlock(&hdmi->mutex);
 }
 
@@ -2570,13 +2558,63 @@ static void dw_hdmi_bridge_enable(struct drm_bridge *bridge)
 	mutex_lock(&hdmi->mutex);
 	hdmi->disabled = false;
 	dw_hdmi_update_power(hdmi);
-	dw_hdmi_update_phy_mask(hdmi);
 	mutex_unlock(&hdmi->mutex);
 }
 
 static void dw_hdmi_bridge_nop(struct drm_bridge *bridge)
 {
 	/* do nothing */
+}
+
+static void dw_hdmi_clear_edid(struct drm_connector *connector)
+{
+	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+					     connector);
+
+	hdmi->sink_is_hdmi = false;
+	hdmi->sink_has_audio = false;
+
+	if (hdmi->cached_edid) {
+		kfree(hdmi->cached_edid);
+		hdmi->cached_edid = NULL;
+	}
+
+	cec_notifier_phys_addr_invalidate(hdmi->cec_notifier);
+}
+
+static void dw_hdmi_get_edid(struct drm_connector *connector)
+{
+	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+					     connector);
+	struct edid *edid;
+	struct hdr_static_metadata *metedata =
+			&connector->display_info.hdmi.hdr_panel_metadata;
+
+	if (connector->status != connector_status_connected) {
+		dw_hdmi_clear_edid(connector);
+		return;
+	}
+
+	if (!hdmi->ddc || hdmi->cached_edid)
+		return;
+
+	edid = drm_get_edid(connector, hdmi->ddc);
+	if (edid) {
+		dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
+			edid->width_cm, edid->height_cm);
+
+		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(edid);
+		hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
+
+		hdmi->cached_edid = edid;
+		drm_edid_to_eld(connector, edid);
+		drm_mode_connector_update_hdr_property(connector, metedata);
+		drm_mode_connector_update_edid_property(connector, edid);
+		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
+	} else {
+		kfree(edid);
+		edid = NULL;
+	}
 }
 
 static enum drm_connector_status
@@ -2586,66 +2624,63 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
 
-	int connect_status;
-
 	mutex_lock(&hdmi->mutex);
 	hdmi->force = DRM_FORCE_UNSPECIFIED;
 	dw_hdmi_update_power(hdmi);
-	dw_hdmi_update_phy_mask(hdmi);
 	mutex_unlock(&hdmi->mutex);
 
-	connect_status = hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
+	status = hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
 
 #ifdef CONFIG_SWITCH
-	if (connect_status == connector_status_connected)
+	if (status == connector_status_connected)
 		switch_set_state(&hdmi->switchdev, 1);
 	else
 		switch_set_state(&hdmi->switchdev, 0);
 #endif
 
-	return connect_status;
+	dw_hdmi_get_edid(connector);
 
+	mutex_lock(&hdmi->mutex);
+	if (status != hdmi->last_connector_status) {
+		//if (hdmi->plat_data->plugged_event)
+		//	hdmi->plat_data->plugged_event(hdmi->plat_data->phy_data, status);
+
+		hdmi->last_connector_status = status;
+	}
+	mutex_unlock(&hdmi->mutex);
+
+	return status;
 }
 
 static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
-	struct edid *edid;
-	struct drm_display_mode *mode;
-	const u8 def_modes[6] = {4, 16, 31, 19, 17, 2};
-	struct drm_display_info *info = &connector->display_info;
-	struct hdr_static_metadata *metedata =
-			&connector->display_info.hdmi.hdr_panel_metadata;
 	int i, ret = 0;
 
 	if (!hdmi->ddc)
 		return 0;
 
-	edid = drm_get_edid(connector, hdmi->ddc);
-	if (edid) {
-		dev_dbg(hdmi->dev, "got edid: width[%d] x height[%d]\n",
-			edid->width_cm, edid->height_cm);
+	if (!hdmi->cached_edid)
+		dw_hdmi_get_edid(connector);
 
-		hdmi->sink_is_hdmi = drm_detect_hdmi_monitor(edid);
-		hdmi->sink_has_audio = drm_detect_monitor_audio(edid);
-		drm_mode_connector_update_edid_property(connector, edid);
-		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
-		ret = drm_add_edid_modes(connector, edid);
-		/* Store the ELD */
-		drm_edid_to_eld(connector, edid);
-		drm_mode_connector_update_hdr_property(connector, metedata);
-		kfree(edid);
+	if (hdmi->cached_edid) {
+		ret = drm_add_edid_modes(connector, hdmi->cached_edid);
 	} else {
+		// Output common tv resolution and hdmi mode if EDID could not be read
+		struct drm_display_mode *mode;
+		const u8 def_modes[6] = {4, 16, 31, 19, 17, 2};
+		struct drm_display_info *info = &connector->display_info;
+		dev_info(hdmi->dev, "failed to get edid\n");
 		hdmi->sink_is_hdmi = true;
 		hdmi->sink_has_audio = true;
 		for (i = 0; i < sizeof(def_modes); i++) {
-			mode = drm_display_mode_from_vic_index(connector,
-							       def_modes,
-							       31, i);
+			mode = drm_display_mode_from_vic_index(connector, def_modes, 31, i);
 			if (mode) {
-				if (def_modes[i] == hdmi->preferred_mode)
-					mode->type |= DRM_MODE_TYPE_PREFERRED;
+				dev_dbg(hdmi->dev, "Adding common mode: [%d]: %u x %u @%u\n",
+					i, mode->hdisplay, mode->vdisplay, mode->vrefresh);
+				if (!i)
+					mode->type = DRM_MODE_TYPE_PREFERRED;
 				drm_mode_probed_add(connector, mode);
 				ret++;
 			}
@@ -2653,8 +2688,6 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 		info->edid_hdmi_dc_modes = 0;
 		info->hdmi.y420_dc_modes = 0;
 		info->color_formats = 0;
-
-		dev_info(hdmi->dev, "failed to get edid\n");
 	}
 
 	return ret;
@@ -2867,13 +2900,30 @@ static void dw_hdmi_connector_force(struct drm_connector *connector)
 #endif
 	hdmi->force = connector->force;
 	dw_hdmi_update_power(hdmi);
-	dw_hdmi_update_phy_mask(hdmi);
 	mutex_unlock(&hdmi->mutex);
+
+	dw_hdmi_get_edid(connector);
+}
+
+static int dw_hdmi_fill_modes(struct drm_connector *connector, u32 max_x, u32 max_y)
+{
+	/* 
+	 * Some cards detect that the HDMI is disconnected during their initial 
+	 * fill_modes, so force the connection just the first time to ensure
+	 * they get populated correctly
+	 */
+	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+					     connector);
+	if (!hdmi->modes_init) {
+		connector->force = DRM_FORCE_ON;
+		hdmi->modes_init = true;
+	}
+	return drm_helper_probe_single_connector_modes(connector, max_x, max_y);
 }
 
 static const struct drm_connector_funcs dw_hdmi_connector_funcs = {
 	.dpms = drm_helper_connector_dpms,
-	.fill_modes = drm_helper_probe_single_connector_modes,
+	.fill_modes = dw_hdmi_fill_modes,
 	.detect = dw_hdmi_connector_detect,
 	.destroy = dw_hdmi_connector_destroy,
 	.force = dw_hdmi_connector_force,
@@ -2881,7 +2931,7 @@ static const struct drm_connector_funcs dw_hdmi_connector_funcs = {
 
 static const struct drm_connector_funcs dw_hdmi_atomic_connector_funcs = {
 	.dpms = drm_atomic_helper_connector_dpms,
-	.fill_modes = drm_helper_probe_single_connector_modes,
+	.fill_modes = dw_hdmi_fill_modes,
 	.detect = dw_hdmi_connector_detect,
 	.destroy = dw_hdmi_connector_destroy,
 	.force = dw_hdmi_connector_force,
@@ -3004,7 +3054,6 @@ static irqreturn_t dw_hdmi_irq(int irq, void *dev_id)
 				hdmi->rxsense = true;
 
 			dw_hdmi_update_power(hdmi);
-			dw_hdmi_update_phy_mask(hdmi);
 		}
 		mutex_unlock(&hdmi->mutex);
 	}
@@ -3070,7 +3119,9 @@ static int dw_hdmi_detect_phy(struct dw_hdmi *hdmi)
 	unsigned int i;
 	u8 phy_type;
 
-	phy_type = hdmi_readb(hdmi, HDMI_CONFIG2_ID);
+	phy_type = hdmi->plat_data->phy_force_vendor ?
+					DW_HDMI_PHY_VENDOR_PHY :
+					hdmi_readb(hdmi, HDMI_CONFIG2_ID);
 
 	/*
 	 * RK3228 and RK3328 phy_type is DW_HDMI_PHY_DWC_HDMI20_TX_PHY,
@@ -3634,11 +3685,6 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
 		return -EINVAL;
 	}
 
-	if (!of_property_read_u32(np, "rockchip,defaultmode", &val))
-		hdmi->preferred_mode = val;
-	else
-		hdmi->preferred_mode = 4;
-
 	ddc_node = of_parse_phandle(np, "ddc-i2c-bus", 0);
 	if (ddc_node) {
 		hdmi->ddc = of_find_i2c_adapter_by_node(ddc_node);
@@ -3967,9 +4013,8 @@ void dw_hdmi_suspend(struct device *dev)
 		dev_warn(dev, "Hdmi has not been initialized\n");
 		return;
 	}
-
+	dw_hdmi_clear_edid(&hdmi->connector);
 	mutex_lock(&hdmi->mutex);
-
 	/*
 	 * When system shutdown, hdmi should be disabled.
 	 * When system suspend, dw_hdmi_bridge_disable will disable hdmi first.
@@ -3979,7 +4024,6 @@ void dw_hdmi_suspend(struct device *dev)
 	if (!hdmi->disabled) {
 		hdmi->disabled = true;
 		dw_hdmi_update_power(hdmi);
-		dw_hdmi_update_phy_mask(hdmi);
 	}
 	mutex_unlock(&hdmi->mutex);
 
@@ -4022,6 +4066,7 @@ void dw_hdmi_resume(struct device *dev)
 					 msecs_to_jiffies(20));
 		}
 	mutex_unlock(&hdmi->mutex);
+	dw_hdmi_get_edid(&hdmi->connector);
 }
 EXPORT_SYMBOL_GPL(dw_hdmi_resume);
 

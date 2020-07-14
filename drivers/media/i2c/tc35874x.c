@@ -201,7 +201,6 @@ struct tc35874x_state {
 	struct v4l2_ctrl *detect_tx_5v_ctrl;
 	struct v4l2_ctrl *audio_sampling_rate_ctrl;
 	struct v4l2_ctrl *audio_present_ctrl;
-	struct v4l2_ctrl *vblank;
 
 	struct delayed_work delayed_work_enable_hotplug;
 
@@ -216,8 +215,6 @@ struct tc35874x_state {
 	u8 csi_lanes_in_use;
 
 	struct gpio_desc *reset_gpio;
-	struct gpio_desc *stanby_gpio;
-	struct gpio_desc *power33_gpio;
 
 	u32 module_index;
 	const char *module_facing;
@@ -1972,10 +1969,7 @@ static long tc35874x_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 
 	switch (cmd) {
 	case RKMODULE_GET_MODULE_INFO:
-		if (tc35874x->module_name)
-			tc35874x_get_module_inf(tc35874x, (struct rkmodule_inf *)arg);
-		else
-			ret = -ENOIOCTLCMD;
+		tc35874x_get_module_inf(tc35874x, (struct rkmodule_inf *)arg);
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -2101,52 +2095,18 @@ static const struct v4l2_ctrl_config tc35874x_ctrl_audio_present = {
 	.flags = V4L2_CTRL_FLAG_READ_ONLY,
 };
 
-/* --------------- RKISP CTRLS --------------- */
-
-static int tc35874x_s_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct tc35874x_state *state = container_of(ctrl->handler,
-			struct tc35874x_state, hdl);
-
-	switch (ctrl->id) {
-	case V4L2_CID_VBLANK:
-	case V4L2_CID_EXPOSURE:
-	case V4L2_CID_TEST_PATTERN:
-		break;
-
-	default:
-		v4l2_dbg(3, debug, &state->sd, "%s Unhandled id:0x%x, val:0x%x\n",
-				__func__, ctrl->id, ctrl->val);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static const struct v4l2_ctrl_ops tc35874x_ctrl_ops = {
-	.s_ctrl = tc35874x_s_ctrl,
-};
-
 /* --------------- PROBE / REMOVE --------------- */
 
-static void tc35874x_set_power(struct tc35874x_state *state, int on)
+#ifdef CONFIG_OF
+static void tc35874x_gpio_reset(struct tc35874x_state *state)
 {
-	if (on) {
-		gpiod_direction_output(state->power33_gpio, 1);
-		gpiod_direction_output(state->stanby_gpio, 1);
-
-		gpiod_set_value(state->reset_gpio, 1);
-		usleep_range(1000, 2000);
-		gpiod_set_value(state->reset_gpio, 0);
-		msleep(10);
-	} else {
-		gpiod_direction_output(state->stanby_gpio, 0);
-		gpiod_direction_output(state->power33_gpio, 0);
-		gpiod_direction_output(state->reset_gpio, 0);
-	}
+	usleep_range(5000, 10000);
+	gpiod_set_value(state->reset_gpio, 1);
+	usleep_range(1000, 2000);
+	gpiod_set_value(state->reset_gpio, 0);
+	msleep(20);
 }
 
-#ifdef CONFIG_OF
 static int tc35874x_probe_of(struct tc35874x_state *state)
 {
 	struct device *dev = &state->i2c_client->dev;
@@ -2246,16 +2206,6 @@ static int tc35874x_probe_of(struct tc35874x_state *state)
 	state->pdata.ths_trailcnt = 0x2;
 	state->pdata.hstxvregcnt = 0;
 
-	state->power33_gpio = devm_gpiod_get_optional(dev,
-			"power33", GPIOD_OUT_LOW);
-	if (IS_ERR(state->power33_gpio))
-		dev_warn(dev, "no power33 gpio\n");
-
-	state->stanby_gpio = devm_gpiod_get_optional(dev,
-			"stanby", GPIOD_OUT_LOW);
-	if (IS_ERR(state->stanby_gpio))
-		dev_warn(dev, "no stanby gpio\n");
-
 	state->reset_gpio = devm_gpiod_get_optional(dev, "reset",
 						    GPIOD_OUT_LOW);
 	if (IS_ERR(state->reset_gpio)) {
@@ -2263,6 +2213,9 @@ static int tc35874x_probe_of(struct tc35874x_state *state)
 		ret = PTR_ERR(state->reset_gpio);
 		goto disable_clk;
 	}
+
+	if (state->reset_gpio)
+		tc35874x_gpio_reset(state);
 
 	ret = 0;
 	goto free_endpoint;
@@ -2284,7 +2237,7 @@ static int tc35874x_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
 	static struct v4l2_dv_timings default_timing =
-		V4L2_DV_BT_CEA_1920X1080P60;
+		V4L2_DV_BT_CEA_640X480P59_94;
 	struct tc35874x_state *state;
 	struct tc35874x_platform_data *pdata = client->dev.platform_data;
 	struct v4l2_subdev *sd;
@@ -2292,7 +2245,7 @@ static int tc35874x_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	struct device_node *node = dev->of_node;
 	char facing[2];
-	int err, data = -1;
+	int err, data;
 
 	dev_info(dev, "driver version: %02x.%02x.%02x",
 		DRIVER_VERSION >> 16,
@@ -2318,7 +2271,8 @@ static int tc35874x_probe(struct i2c_client *client,
 	err |= of_property_read_string(node, RKMODULE_CAMERA_LENS_NAME,
 				       &state->len_name);
 	if (err) {
-		dev_warn(dev, "could not get module information!\n");
+		dev_err(dev, "could not get module information!\n");
+		return -EINVAL;
 	}
 
 	state->i2c_client = client;
@@ -2340,12 +2294,9 @@ static int tc35874x_probe(struct i2c_client *client,
 	v4l2_i2c_subdev_init(sd, client, &tc35874x_ops);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 
-	tc35874x_set_power(state, 1);
-
 	/* i2c access */
-	i2c_rd(sd, CHIPID, (u8 __force *)&data, 2);
-
-	switch (data & MASK_CHIPID) {
+	data = i2c_rd16(sd, CHIPID) & MASK_CHIPID;
+	switch (data) {
 	case 0x0000:
 	case 0x4700:
 		break;
@@ -2356,7 +2307,7 @@ static int tc35874x_probe(struct i2c_client *client,
 	}
 
 	/* control handlers */
-	v4l2_ctrl_handler_init(&state->hdl, 6);
+	v4l2_ctrl_handler_init(&state->hdl, 4);
 
 	state->link_freq = v4l2_ctrl_new_int_menu(&state->hdl, NULL,
 		V4L2_CID_LINK_FREQ, 0, 0, link_freq_menu_items);
@@ -2371,9 +2322,6 @@ static int tc35874x_probe(struct i2c_client *client,
 
 	if (state->detect_tx_5v_ctrl)
 		state->detect_tx_5v_ctrl->flags |= V4L2_CTRL_FLAG_VOLATILE;
-
-	state->vblank = v4l2_ctrl_new_std(&state->hdl, &tc35874x_ctrl_ops,
-			V4L2_CID_VBLANK, 1, 8, 1, 4);
 
 	/* custom controls */
 	state->audio_sampling_rate_ctrl = v4l2_ctrl_new_custom(&state->hdl,
@@ -2402,18 +2350,15 @@ static int tc35874x_probe(struct i2c_client *client,
 	state->mbus_fmt_code = MEDIA_BUS_FMT_UYVY8_2X8;
 
 	sd->dev = &client->dev;
-	if (state->module_facing && state->module_name) {
-		memset(facing, 0, sizeof(facing));
-		if (strcmp(state->module_facing, "back") == 0)
-			facing[0] = 'b';
-		else
-			facing[0] = 'f';
+	memset(facing, 0, sizeof(facing));
+	if (strcmp(state->module_facing, "back") == 0)
+		facing[0] = 'b';
+	else
+		facing[0] = 'f';
 
-		snprintf(sd->name, sizeof(sd->name), "m%02d_%s_%s %s",
-			 state->module_index, facing,
-			 TC35874X_NAME, dev_name(sd->dev));
-	}
-
+	snprintf(sd->name, sizeof(sd->name), "m%02d_%s_%s %s",
+		 state->module_index, facing,
+		 TC35874X_NAME, dev_name(sd->dev));
 	err = v4l2_async_register_subdev(sd);
 	if (err < 0)
 		goto err_hdl;

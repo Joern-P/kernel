@@ -46,6 +46,17 @@ config CPU_FREQ_STAT_DETAILS
 
 	  If in doubt, say N.
 
+config CPU_WAKE_BOOST
+	bool "CPU wake boost"
+	depends on FB
+	help
+	  Boosts all online CPUs to policy->max (scaling_max_freq) when the display
+	  is powered on, as reported by the framebuffer chain notifier. This helps
+	  make the display power on faster, as well as ensures good performance
+	  immediately after powering on the display.
+
+comment "CPU frequency scaling drivers"
+
 config CPU_FREQ_TIMES
        bool "CPU frequency time-in-state statistics"
        default y
@@ -62,6 +73,55 @@ choice
 	help
 	  This option sets which CPUFreq governor shall be loaded at
 	  startup. If in doubt, select 'performance'.
+
+config CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ12
+	bool "mrfixedfreq12"
+	select CPU_FREQ_GOV_MRFIXEDFREQ12
+	help
+	  Use the CPUFreq governor 'mrfixedfreq12' as default. This sets
+	  the frequency to 1.2ghz.
+
+config CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ13
+	bool "mrfixedfreq13"
+	select CPU_FREQ_GOV_MRFIXEDFREQ13
+	help
+	  Use the CPUFreq governor 'mrfixedfreq13' as default. This sets
+	  the frequency to 1.3ghz.
+
+config CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ14
+	bool "mrfixedfreq14"
+	select CPU_FREQ_GOV_MRFIXEDFREQ14
+	help
+	  Use the CPUFreq governor 'mrfixedfreq14' as default. This sets
+	  the frequency to 1.4ghz.
+
+config CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ15
+	bool "mrfixedfreq15"
+	select CPU_FREQ_GOV_MRFIXEDFREQ15
+	help
+	  Use the CPUFreq governor 'mrfixedfreq15' as default. This sets
+	  the frequency to 1.5ghz.
+
+config CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ18
+	bool "mrfixedfreq18"
+	select CPU_FREQ_GOV_MRFIXEDFREQ18
+	help
+	  Use the CPUFreq governor 'mrfixedfreq18' as default. This sets
+	  the frequency to 1.8ghz.
+
+config CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ20
+	bool "mrfixedfreq20"
+	select CPU_FREQ_GOV_MRFIXEDFREQ20
+	help
+	  Use the CPUFreq governor 'mrfixedfreq20' as default. This sets
+	  the frequency to 2.0ghz.
+
+config CPU_FREQ_DEFAULT_GOV_MRFIXEDFREQ22
+	bool "mrfixedfreq22"
+	select CPU_FREQ_GOV_MRFIXEDFREQ22
+	help
+	  Use the CPUFreq governor 'mrfixedfreq22' as default. This sets
+	  the frequency to 2.2ghz.
 
 config CPU_FREQ_DEFAULT_GOV_PERFORMANCE
 	bool "performance"
@@ -131,6 +191,76 @@ config CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
 	  have a look at the help section of that governor. The fallback
 	  governor will be 'performance'.
 endchoice
+
+config CPU_FREQ_GOV_MRFIXEDFREQ12
+	tristate "'mrfixedfreq12' governor"
+	help
+	  This cpufreq governor sets the frequency to 1.2 ghz
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_performance.
+
+	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_MRFIXEDFREQ13
+	tristate "'mrfixedfreq13' governor"
+	help
+	  This cpufreq governor sets the frequency to 1.3 ghz
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_performance.
+
+	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_MRFIXEDFREQ14
+	tristate "'mrfixedfreq14' governor"
+	help
+	  This cpufreq governor sets the frequency to 1.4 ghz
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_performance.
+
+	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_MRFIXEDFREQ15
+	tristate "'mrfixedfreq15' governor"
+	help
+	  This cpufreq governor sets the frequency to 1.5 ghz
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_performance.
+
+	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_MRFIXEDFREQ18
+	tristate "'mrfixedfreq18' governor"
+	help
+	  This cpufreq governor sets the frequency to 1.8 ghz
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_performance.
+
+	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_MRFIXEDFREQ20
+	tristate "'mrfixedfreq20' governor"
+	help
+	  This cpufreq governor sets the frequency to 2.0 ghz
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_performance.
+
+	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_MRFIXEDFREQ22
+	tristate "'mrfixedfreq22' governor"
+	help
+	  This cpufreq governor sets the frequency to 2.2 ghz
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_performance.
+
+	  If in doubt, say Y.
 
 config CPU_FREQ_GOV_PERFORMANCE
 	tristate "'performance' governor"

@@ -286,7 +286,12 @@ static void dw8250_set_termios(struct uart_port *p, struct ktermios *termios,
 	}
 #else
 	rate = clk_round_rate(d->clk, baud * 16);
-	ret = clk_set_rate(d->clk, rate);
+ 	if (rate < 0)
+ 		ret = rate;
+	else if (rate == 0)
+		ret = -ENOENT;
+ 	else
+ 		ret = clk_set_rate(d->clk, rate);
 #endif
 	clk_prepare_enable(d->clk);
 
@@ -549,6 +554,10 @@ static int dw8250_probe(struct platform_device *pdev)
 	if (!data->skip_autocfg)
 		dw8250_setup_port(p);
 
+#ifdef CONFIG_PM
+	uart.capabilities |= UART_CAP_RPM;
+#endif
+
 	/* If we have a valid fifosize, try hooking up DMA */
 	if (p->fifosize) {
 		data->dma.rxconf.src_maxburst = p->fifosize / 4;
@@ -702,6 +711,7 @@ static const struct acpi_device_id dw8250_acpi_match[] = {
 	{ "8086228A", 0 },
 	{ "APMC0D08", 0},
 	{ "AMD0020", 0 },
+	{ "BCM4359C0", 0 },
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, dw8250_acpi_match);

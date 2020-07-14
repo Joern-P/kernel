@@ -50,11 +50,13 @@ static int rk808_clkout2_enable(struct clk_hw *hw, bool enable)
 
 static int rk808_clkout2_prepare(struct clk_hw *hw)
 {
+	printk(KERN_INFO "[RK808]: clkout2_prepare");
 	return rk808_clkout2_enable(hw, true);
 }
 
 static void rk808_clkout2_unprepare(struct clk_hw *hw)
 {
+	printk(KERN_INFO "[RK808]: clkout2_unprepare");
 	rk808_clkout2_enable(hw, false);
 }
 

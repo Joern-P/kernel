@@ -13,11 +13,11 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/rockchip/cpu.h>
+#include <linux/hdmi-notifier.h>
 #include <linux/regmap.h>
 #include <linux/pm_runtime.h>
 #include <linux/phy/phy.h>
 
-#include <drm/drm_atomic.h>
 #include <drm/drm_of.h>
 #include <drm/drmP.h>
 #include <drm/drm_crtc_helper.h>
@@ -518,6 +518,11 @@ dw_hdmi_rockchip_mode_valid(struct drm_connector *connector,
 	if (hdmi->dev_type == RK3368_HDMI && mode->clock > 340000 &&
 	    !drm_mode_is_420(&connector->display_info, mode))
 		return MODE_BAD;
+
+	/* Skip bad clocks for RK3288 */
+	if (hdmi->dev_type == RK3288_HDMI && (mode->clock < 27500 || mode->clock > 340000))
+		return MODE_CLOCK_RANGE;
+
 	/*
 	 * ensure all drm display mode can work, if someone want support more
 	 * resolutions, please limit the possible_crtc, only connect to
@@ -557,6 +562,7 @@ static void dw_hdmi_rockchip_encoder_disable(struct drm_encoder *encoder)
 	if (hdmi->phy)
 		phy_set_bus_width(hdmi->phy, 8);
 	clk_disable_unprepare(hdmi->dclk);
+	hdmi_event_disconnect(hdmi->dev);
 }
 
 static void dw_hdmi_rockchip_encoder_enable(struct drm_encoder *encoder)
@@ -628,6 +634,7 @@ static void dw_hdmi_rockchip_encoder_enable(struct drm_encoder *encoder)
 	}
 
 	clk_disable_unprepare(hdmi->grf_clk);
+	hdmi_event_connect(hdmi->dev);
 }
 
 static void
@@ -1089,17 +1096,8 @@ dw_hdmi_rockchip_set_property(struct drm_connector *connector,
 	} else if (property == hdmi->quant_range) {
 		hdmi->hdmi_quant_range = val;
 		return 0;
-	} else if (property == hdmi->outputmode_capacity) {
-		return -EINVAL;
-	} else if (property == hdmi->colordepth_capacity) {
-		return -EINVAL;
 	} else {
-		if (!state)
-			return drm_atomic_helper_connector_set_property(connector,
-									property, val);
-		else
-			return drm_atomic_connector_set_property(connector, state,
-								 property, val);
+		return drm_atomic_helper_connector_set_property(connector, property, val);
 	}
 }
 
@@ -1204,6 +1202,7 @@ static const struct dw_hdmi_plat_data rk3328_hdmi_drv_data = {
 	.phy_ops    = &inno_dw_hdmi_phy_ops,
 	.phy_name   = "inno_dw_hdmi_phy2",
 	.dev_type   = RK3328_HDMI,
+	.phy_force_vendor = true,
 };
 
 static const struct dw_hdmi_plat_data rk3366_hdmi_drv_data = {

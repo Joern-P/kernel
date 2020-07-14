@@ -227,14 +227,11 @@ struct devfreq_event_dev *devfreq_event_get_edev_by_phandle(struct device *dev,
 	struct devfreq_event_dev *edev;
 
 	if (!dev->of_node) {
-		dev_err(dev, "device does not have a device node entry\n");
 		return ERR_PTR(-EINVAL);
 	}
 
 	node = of_parse_phandle(dev->of_node, "devfreq-events", index);
 	if (!node) {
-		dev_err(dev, "failed to get phandle in %s node\n",
-			dev->of_node->full_name);
 		return ERR_PTR(-ENODEV);
 	}
 
@@ -248,8 +245,6 @@ out:
 	mutex_unlock(&devfreq_event_list_lock);
 
 	if (!edev) {
-		dev_err(dev, "unable to get devfreq-event device : %s\n",
-			node->name);
 		of_node_put(node);
 		return ERR_PTR(-ENODEV);
 	}

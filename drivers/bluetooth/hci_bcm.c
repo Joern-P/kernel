@@ -27,6 +27,8 @@
 #include <linux/firmware.h>
 #include <linux/module.h>
 #include <linux/acpi.h>
+#include <linux/of.h>
+#include <linux/property.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/gpio/consumer.h>
@@ -34,6 +36,7 @@
 #include <linux/interrupt.h>
 #include <linux/dmi.h>
 #include <linux/pm_runtime.h>
+#include <linux/serdev.h>
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
@@ -46,6 +49,9 @@
 
 #define BCM_AUTOSUSPEND_DELAY	5000 /* default autosleep delay */
 
+#define LOG(x...)   printk(KERN_INFO "[HCI_BCM]: "x)
+
+/* platform device driver resources */
 struct bcm_device {
 	struct list_head	list;
 
@@ -59,6 +65,7 @@ struct bcm_device {
 	bool			clk_enabled;
 
 	u32			init_speed;
+	u32			oper_speed;
 	int			irq;
 	u8			irq_polarity;
 
@@ -68,6 +75,12 @@ struct bcm_device {
 #endif
 };
 
+/* serdev driver resources */
+struct bcm_serdev {
+	struct hci_uart hu;
+};
+
+/* generic bcm uart resources */
 struct bcm_data {
 	struct sk_buff		*rx_skb;
 	struct sk_buff_head	txq;
@@ -78,6 +91,14 @@ struct bcm_data {
 /* List of BCM BT UART devices */
 static DEFINE_MUTEX(bcm_device_lock);
 static LIST_HEAD(bcm_device_list);
+
+static inline void host_set_baudrate(struct hci_uart *hu, unsigned int speed)
+{
+	if (hu->serdev)
+		serdev_device_set_baudrate(hu->serdev, speed);
+	else
+		hci_uart_set_baudrate(hu, speed);
+}
 
 static int bcm_set_baudrate(struct hci_uart *hu, unsigned int speed)
 {
@@ -146,13 +167,16 @@ static bool bcm_device_exists(struct bcm_device *device)
 static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 {
 	if (powered && !IS_ERR(dev->clk) && !dev->clk_enabled)
-		clk_enable(dev->clk);
+		clk_prepare_enable(dev->clk);
 
 	gpiod_set_value(dev->shutdown, powered);
 	gpiod_set_value(dev->device_wakeup, powered);
 
 	if (!powered && !IS_ERR(dev->clk) && dev->clk_enabled)
-		clk_disable(dev->clk);
+		clk_disable_unprepare(dev->clk);
+
+	/* wait for device to power on and come out of reset */
+	usleep_range(10000, 20000);
 
 	dev->clk_enabled = powered;
 
@@ -290,6 +314,14 @@ static int bcm_open(struct hci_uart *hu)
 
 	hu->priv = bcm;
 
+	/* If this is a serdev defined device, then only use
+	* serdev open primitive and skip the rest.
+	*/
+	if (hu->serdev) {
+		serdev_device_open(hu->serdev);
+		goto out;
+	}
+
 	if (!hu->tty->dev)
 		goto out;
 
@@ -304,6 +336,7 @@ static int bcm_open(struct hci_uart *hu)
 		if (hu->tty->dev->parent == dev->pdev->dev.parent) {
 			bcm->dev = dev;
 			hu->init_speed = dev->init_speed;
+			hu->oper_speed = dev->oper_speed;
 #ifdef CONFIG_PM
 			dev->hu = hu;
 #endif
@@ -323,6 +356,12 @@ static int bcm_close(struct hci_uart *hu)
 	struct bcm_device *bdev = bcm->dev;
 
 	bt_dev_dbg(hu->hdev, "hu %p", hu);
+
+	/* If this is a serdev defined device, only use serdev
+	* close primitive and then continue as usual.
+	*/
+	if (hu->serdev)
+		serdev_device_close(hu->serdev);
 
 	/* Protect bcm->dev against removal of the device or driver */
 	mutex_lock(&bcm_device_lock);
@@ -399,7 +438,7 @@ static int bcm_setup(struct hci_uart *hu)
 		speed = 0;
 
 	if (speed)
-		hci_uart_set_baudrate(hu, speed);
+		host_set_baudrate(hu, speed);
 
 	/* Operational speed if any */
 	if (hu->oper_speed)
@@ -412,7 +451,7 @@ static int bcm_setup(struct hci_uart *hu)
 	if (speed) {
 		err = bcm_set_baudrate(hu, speed);
 		if (!err)
-			hci_uart_set_baudrate(hu, speed);
+			host_set_baudrate(hu, speed);
 	}
 
 finalize:
@@ -422,8 +461,7 @@ finalize:
 	if (err)
 		return err;
 
-	err = bcm_request_irq(bcm);
-	if (!err)
+	if (!bcm_request_irq(bcm))
 		err = bcm_setup_sleep(hu);
 
 	return err;
@@ -578,7 +616,7 @@ static int bcm_suspend(struct device *dev)
 	if (pm_runtime_active(dev))
 		bcm_suspend_device(dev);
 
-	if (device_may_wakeup(&bdev->pdev->dev)) {
+	if (device_may_wakeup(&bdev->pdev->dev) && bdev->irq > 0) {
 		error = enable_irq_wake(bdev->irq);
 		if (!error)
 			bt_dev_dbg(bdev, "BCM irq: enabled");
@@ -594,6 +632,7 @@ unlock:
 static int bcm_resume(struct device *dev)
 {
 	struct bcm_device *bdev = platform_get_drvdata(to_platform_device(dev));
+	int err = 0;
 
 	bt_dev_dbg(bdev, "resume: is_suspended %d", bdev->is_suspended);
 
@@ -606,19 +645,20 @@ static int bcm_resume(struct device *dev)
 	if (!bdev->hu)
 		goto unlock;
 
-	if (device_may_wakeup(&bdev->pdev->dev)) {
+	if (device_may_wakeup(&bdev->pdev->dev) && bdev->irq > 0) {
 		disable_irq_wake(bdev->irq);
 		bt_dev_dbg(bdev, "BCM irq: disabled");
 	}
 
-	bcm_resume_device(dev);
+	err = bcm_resume_device(dev);
 
 unlock:
 	mutex_unlock(&bcm_device_lock);
-
-	pm_runtime_disable(dev);
-	pm_runtime_set_active(dev);
-	pm_runtime_enable(dev);
+	if (!err) {
+		pm_runtime_disable(dev);
+		pm_runtime_set_active(dev);
+		pm_runtime_enable(dev);
+	}
 
 	return 0;
 }
@@ -673,8 +713,10 @@ static int bcm_resource(struct acpi_resource *ares, void *data)
 
 	case ACPI_RESOURCE_TYPE_SERIAL_BUS:
 		sb = &ares->data.uart_serial_bus;
-		if (sb->type == ACPI_RESOURCE_SERIAL_TYPE_UART)
+		if (sb->type == ACPI_RESOURCE_SERIAL_TYPE_UART) {
 			dev->init_speed = sb->default_baud_rate;
+			dev->oper_speed = 4000000;
+		}
 		break;
 
 	default:
@@ -700,6 +742,10 @@ static int bcm_acpi_probe(struct bcm_device *dev)
 		return ret;
 
 	dev->clk = devm_clk_get(&pdev->dev, NULL);
+
+	/* Handle deferred probing */
+	if (dev->clk == ERR_PTR(-EPROBE_DEFER))
+		return PTR_ERR(dev->clk);
 
 	dev->device_wakeup = devm_gpiod_get_optional(&pdev->dev,
 						     "device-wakeup",
@@ -782,7 +828,9 @@ static int bcm_probe(struct platform_device *pdev)
 	list_add_tail(&dev->list, &bcm_device_list);
 	mutex_unlock(&bcm_device_lock);
 
-	bcm_gpio_set_power(dev, false);
+	ret = bcm_gpio_set_power(dev, false);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to power down\n");
 
 	return 0;
 }
@@ -795,8 +843,6 @@ static int bcm_remove(struct platform_device *pdev)
 	list_del(&dev->list);
 	mutex_unlock(&bcm_device_lock);
 
-	acpi_dev_remove_driver_gpios(ACPI_COMPANION(&pdev->dev));
-
 	dev_info(&pdev->dev, "%s device unregistered.\n", dev->name);
 
 	return 0;
@@ -807,7 +853,6 @@ static const struct hci_uart_proto bcm_proto = {
 	.name		= "BCM",
 	.manufacturer	= 15,
 	.init_speed	= 115200,
-	.oper_speed	= 4000000,
 	.open		= bcm_open,
 	.close		= bcm_close,
 	.flush		= bcm_flush,
@@ -843,16 +888,70 @@ static struct platform_driver bcm_driver = {
 	},
 };
 
+static int bcm_serdev_probe(struct serdev_device *serdev)
+{
+	struct bcm_serdev *bcmdev;
+	u32 speed;
+	int err;
+
+	bcmdev = devm_kzalloc(&serdev->dev, sizeof(*bcmdev), GFP_KERNEL);
+	if (!bcmdev)
+		return -ENOMEM;
+
+	bcmdev->hu.serdev = serdev;
+	serdev_device_set_drvdata(serdev, bcmdev);
+
+	err = device_property_read_u32(&serdev->dev, "max-speed", &speed);
+	if (!err)
+		bcmdev->hu.oper_speed = speed;
+
+	return hci_uart_register_device(&bcmdev->hu, &bcm_proto);
+}
+
+static void bcm_serdev_remove(struct serdev_device *serdev)
+{
+	struct bcm_serdev *bcmdev = serdev_device_get_drvdata(serdev);
+
+	hci_uart_unregister_device(&bcmdev->hu);
+}
+
+#ifdef CONFIG_OF
+static const struct of_device_id bcm_bluetooth_of_match[] = {
+	{ .compatible = "brcm,bcm-bt" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, bcm_bluetooth_of_match);
+#endif
+
+static struct serdev_device_driver bcm_serdev_driver = {
+	.probe = bcm_serdev_probe,
+	.remove = bcm_serdev_remove,
+	.driver = {
+	.name = "hci_uart_bcm",
+	.of_match_table = of_match_ptr(bcm_bluetooth_of_match),
+	},
+};
+
 int __init bcm_init(void)
 {
+	/* For now, we need to keep both platform device
+	* driver (ACPI generated) and serdev driver (DT).
+	*/
+	LOG("Enter %s\n", __func__);
 	platform_driver_register(&bcm_driver);
+	serdev_device_driver_register(&bcm_serdev_driver);
 
 	return hci_uart_register_proto(&bcm_proto);
 }
 
 int __exit bcm_deinit(void)
 {
+	LOG("Enter %s\n", __func__);
 	platform_driver_unregister(&bcm_driver);
+	serdev_device_driver_unregister(&bcm_serdev_driver);
 
 	return hci_uart_unregister_proto(&bcm_proto);
 }
+
+/* module_init(bcm_init);
+module_exit(bcm_deinit); */

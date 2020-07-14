@@ -1097,6 +1097,9 @@ static int mmc_select_hs_ddr(struct mmc_card *card)
 	if (err)
 		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330);
 
+	if (!err)
+		mmc_set_timing(host, MMC_TIMING_MMC_DDR52);
+
 	return err;
 }
 

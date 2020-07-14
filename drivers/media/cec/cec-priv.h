@@ -34,12 +34,15 @@
 
 /* cec-core.c */
 extern int cec_debug;
+extern int cec_debounce;
 int cec_get_device(struct cec_devnode *devnode);
 void cec_put_device(struct cec_devnode *devnode);
 
 /* cec-adap.c */
 int cec_monitor_all_cnt_inc(struct cec_adapter *adap);
 void cec_monitor_all_cnt_dec(struct cec_adapter *adap);
+int cec_monitor_pin_cnt_inc(struct cec_adapter *adap);
+void cec_monitor_pin_cnt_dec(struct cec_adapter *adap);
 int cec_adap_status(struct seq_file *file, void *priv);
 int cec_thread_func(void *_adap);
 void __cec_s_phys_addr(struct cec_adapter *adap, u16 phys_addr, bool block);

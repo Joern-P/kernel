@@ -93,6 +93,7 @@ core-$(CONFIG_NET) += arch/arm64/net/
 core-$(CONFIG_KVM) += arch/arm64/kvm/
 core-$(CONFIG_XEN) += arch/arm64/xen/
 core-$(CONFIG_CRYPTO) += arch/arm64/crypto/
+core-$(CONFIG_HIMA_HOTPLUG) += arch/arm64/hotplug/
 libs-y		:= arch/arm64/lib/ $(libs-y)
 core-$(CONFIG_EFI_STUB) += $(objtree)/drivers/firmware/efi/libstub/lib.a
 
@@ -100,7 +101,7 @@ core-$(CONFIG_EFI_STUB) += $(objtree)/drivers/firmware/efi/libstub/lib.a
 ifeq ($(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE),y)
 KBUILD_IMAGE	:= $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_KERNEL_IMAGE_NAME))
 else
-KBUILD_IMAGE	:= Image.gz
+KBUILD_IMAGE	:= Image
 endif
 
 KBUILD_DTBS	:= dtbs
@@ -141,6 +142,7 @@ archclean:
 	$(Q)$(MAKE) $(clean)=$(boot)
 	$(Q)$(MAKE) $(clean)=$(boot)/dts
 
+ifeq ($(KBUILD_EXTMOD),)
 # We need to generate vdso-offsets.h before compiling certain files in kernel/.
 # In order to do that, we should use the archprepare target, but we can't since
 # asm-offsets.h is included in some files used to generate vdso-offsets.h, and
@@ -150,6 +152,7 @@ archclean:
 prepare: vdso_prepare
 vdso_prepare: prepare0
 	$(Q)$(MAKE) $(build)=arch/arm64/kernel/vdso include/generated/vdso-offsets.h
+endif
 
 define archhelp
   echo  '* Image.gz      - Compressed kernel image (arch/$(ARCH)/boot/Image.gz)'
@@ -172,63 +175,6 @@ endif
 
 LOGO := $(notdir $(wildcard $(srctree)/logo.bmp))
 LOGO_KERNEL := $(notdir $(wildcard $(srctree)/logo_kernel.bmp))
-
-PHONY += rklogo
-rklogo: $(LOGO) $(LOGO_KERNEL)
-	$(Q) if [ -f $(srctree)/$(LOGO) -a "$(srctree)" != "$(objtree)" ]; then cp -av $(srctree)/$(LOGO) $(objtree)/; fi
-	$(Q) if [ -f $(srctree)/$(LOGO_KERNEL) -a "$(srctree)" != "$(objtree)" ]; then cp -av $(srctree)/$(LOGO_KERNEL) $(objtree)/; fi
-
-RAMDISK_IMG := $(notdir $(wildcard $(objtree)/ramdisk.img))
-make_boot_img := \
-	$(srctree)/scripts/mkbootimg \
-		--kernel $(objtree)/arch/arm64/boot/Image \
-		$(if $(RAMDISK_IMG),--ramdisk $(objtree)/ramdisk.img) \
-		--second resource.img \
-		-o boot.img && \
-	echo '  Image:  boot.img (with Image $(if $(RAMDISK_IMG),'ramdisk.img ')resource.img) is ready'; \
-	$(srctree)/scripts/mkbootimg \
-		--kernel $(objtree)/arch/arm64/boot/Image.lz4 \
-		$(if $(RAMDISK_IMG),--ramdisk $(objtree)/ramdisk.img) \
-		--second resource.img \
-		-o zboot.img && \
-	echo '  Image:  zboot.img (with Image.lz4 $(if $(RAMDISK_IMG),'ramdisk.img ')resource.img) is ready'
-
-repack_boot_img := \
-	$(srctree)/scripts/repack-bootimg \
-		--boot_img $(BOOT_IMG) --out out \
-		--kernel $(objtree)/arch/arm64/boot/Image \
-		--second resource.img \
-		-o boot.img && \
-	echo '  Image:  boot.img ($(BOOT_IMG) + Image + resource.img) is ready'; \
-	$(srctree)/scripts/repack-bootimg \
-		--boot_img $(BOOT_IMG) --out out \
-		--kernel $(objtree)/arch/arm64/boot/Image.lz4 \
-		--second resource.img \
-		-o zboot.img && \
-	echo '  Image:  zboot.img ($(BOOT_IMG) + Image.lz4 + resource.img) is ready'
-
-
-ifeq ($(CONFIG_MACH_NANOPI4),y)
-DTBS := rockchip/rk3399-nanopi4-rev*.dtb
-
-
-PHONY += nanopi4-images nanopi4-bootimg
-nanopi4-images: dtbs kernel.img rklogo
-	$(Q)scripts/resource_tool --dtbname $(objtree)/arch/arm64/boot/dts/$(DTBS) $(LOGO) $(LOGO_KERNEL)
-	@echo '  Image:  resource.img (with $(DTBS) $(LOGO) $(LOGO_KERNEL)) is ready'
-
-nanopi4-bootimg: nanopi4-images
-	$(Q) if [ -f "$(BOOT_IMG)" -a -x $(srctree)/scripts/repack-bootimg ]; then \
-		$(repack_boot_img); \
-	elif [ -x $(srctree)/scripts/mkbootimg ]; then \
-		$(make_boot_img); \
-	fi
-
-PHONY += nanopi-r2-images nanopi-r2-bootimg
-nanopi-r2-images: nanopi4-images
-nanopi-r2-bootimg: nanopi4-bootimg
-
-endif
 
 %.img: rockchip/%.dtb kernel.img $(LOGO) $(LOGO_KERNEL)
 	$(Q)$(srctree)/scripts/mkimg --dtb $*.dtb

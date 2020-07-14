@@ -423,10 +423,11 @@ struct clk *__clk_lookup(const char *name)
 	return !core ? NULL : core->hw->clk;
 }
 
-static void clk_core_get_boundaries(struct clk_core *core,
-				    unsigned long *min_rate,
-				    unsigned long *max_rate)
+void clk_hw_get_boundaries(struct clk_hw *hw,
+			   unsigned long *min_rate,
+			   unsigned long *max_rate)
 {
+	struct clk_core *core = hw->core;
 	struct clk *clk_user;
 
 	*min_rate = core->min_rate;
@@ -438,6 +439,7 @@ static void clk_core_get_boundaries(struct clk_core *core,
 	hlist_for_each_entry(clk_user, &core->clks, clks_node)
 		*max_rate = min(*max_rate, clk_user->max_rate);
 }
+EXPORT_SYMBOL_GPL(clk_hw_get_boundaries);
 
 void clk_hw_set_rate_range(struct clk_hw *hw, unsigned long min_rate,
 			   unsigned long max_rate)
@@ -892,7 +894,7 @@ unsigned long clk_hw_round_rate(struct clk_hw *hw, unsigned long rate)
 	int ret;
 	struct clk_rate_request req;
 
-	clk_core_get_boundaries(hw->core, &req.min_rate, &req.max_rate);
+	clk_hw_get_boundaries(hw, &req.min_rate, &req.max_rate);
 	req.rate = rate;
 
 	ret = clk_core_round_rate_nolock(hw->core, &req);
@@ -922,7 +924,7 @@ long clk_round_rate(struct clk *clk, unsigned long rate)
 
 	clk_prepare_lock();
 
-	clk_core_get_boundaries(clk->core, &req.min_rate, &req.max_rate);
+	clk_hw_get_boundaries(clk->core->hw, &req.min_rate, &req.max_rate);
 	req.rate = rate;
 
 	ret = clk_core_round_rate_nolock(clk->core, &req);
@@ -1367,7 +1369,7 @@ static struct clk_core *clk_calc_new_rates(struct clk_core *core,
 	if (parent)
 		best_parent_rate = parent->rate;
 
-	clk_core_get_boundaries(core, &min_rate, &max_rate);
+	clk_hw_get_boundaries(core->hw, &min_rate, &max_rate);
 
 	/* find the closest rate and parent clk/rate */
 	if (core->ops->determine_rate) {
