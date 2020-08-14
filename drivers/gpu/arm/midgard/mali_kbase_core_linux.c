@@ -515,7 +515,7 @@ copy_failed:
 	case KBASE_FUNC_JOB_SUBMIT:
 		{
 			struct kbase_uk_job_submit *job = args;
-			void __user *user_addr;
+			void __user *user_addr = NULL;
 
 			if (sizeof(*job) != args_size)
 				goto bad_size;
@@ -537,7 +537,7 @@ copy_failed:
 	case KBASE_FUNC_JOB_SUBMIT_UK6:
 		{
 			struct kbase_uk_job_submit *job = args;
-			void __user *user_addr;
+			void __user *user_addr = NULL;
 
 			if (sizeof(*job) != args_size)
 				goto bad_size;
@@ -1334,7 +1334,7 @@ static int kbase_api_set_flags(struct kbase_context *kctx,
 static int kbase_api_job_submit(struct kbase_context *kctx,
 		struct kbase_ioctl_job_submit *submit)
 {
-	void __user *user_addr;
+	void __user *user_addr = NULL;
 
 #ifdef CONFIG_COMPAT
 	if (kbase_ctx_flag(kctx, KCTX_COMPAT))
@@ -1574,7 +1574,7 @@ static int kbase_api_mem_alias(struct kbase_context *kctx,
 		union kbase_ioctl_mem_alias *alias)
 {
 	struct base_mem_aliasing_info *ai;
-	void __user *user_addr;
+	void __user *user_addr = NULL;
 	u64 flags;
 	int err;
 
@@ -1587,7 +1587,8 @@ static int kbase_api_mem_alias(struct kbase_context *kctx,
 
 #ifdef CONFIG_COMPAT
 	if (kbase_ctx_flag(kctx, KCTX_COMPAT))
-		user_addr = compat_ptr(alias->in.aliasing_info.compat_value);
+		user_addr =
+			compat_ptr(alias->in.aliasing_info.compat_value);
 	else
 #endif
 		user_addr = alias->in.aliasing_info.value;
