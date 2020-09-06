@@ -3570,7 +3570,7 @@ static void dw_hdmi_register_debugfs(struct device *dev, struct dw_hdmi *hdmi)
 }
 
 static void dw_hdmi_register_hdcp(struct device *dev, struct dw_hdmi *hdmi,
-				  u32 val, bool hdcp1x_enable)
+				  u32 val, bool hdcp1x_enable, u8 hdcp_stat)
 {
 	struct dw_hdcp hdmi_hdcp = {
 		.hdmi = hdmi,
@@ -3579,6 +3579,7 @@ static void dw_hdmi_register_hdcp(struct device *dev, struct dw_hdmi *hdmi,
 		.regs = hdmi->regs,
 		.reg_io_width = val,
 		.enable = hdcp1x_enable,
+		.status = hdcp_stat,
 	};
 	struct platform_device_info hdcp_device_info = {
 		.parent = dev,
@@ -3610,6 +3611,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
 	struct dw_hdmi_cec_data cec;
 	struct dw_hdmi *hdmi;
 	int ret;
+	u8 hdcp_stat = 0;
 	u8 prod_id0;
 	u8 prod_id1;
 	u32 val = 1;
@@ -3767,6 +3769,7 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
 	ret = hdmi_readb(hdmi, HDMI_PHY_STAT0);
 	if ((ret & HDMI_PHY_TX_PHY_LOCK) && (ret & HDMI_PHY_HPD) &&
 	    hdmi_readb(hdmi, HDMI_FC_EXCTRLDUR)) {
+		hdcp_stat = hdmi_readb(hdmi, HDMI_A_APIINTSTAT);
 		hdmi->mc_clkdis = hdmi_readb(hdmi, HDMI_MC_CLKDIS);
 		hdmi->disabled = false;
 		hdmi->bridge_is_on = true;
@@ -3893,7 +3896,17 @@ int dw_hdmi_bind(struct device *dev, struct device *master,
 
 	if (of_property_read_bool(np, "hdcp1x-enable"))
 		hdcp1x_enable = true;
-	dw_hdmi_register_hdcp(dev, hdmi, val, hdcp1x_enable);
+
+	if (hdcp_stat & 0x40)
+		hdcp_stat = DW_HDCP_AUTH_FAIL;
+	else if (hdcp_stat & 0x80)
+		hdcp_stat = DW_HDCP_AUTH_SUCCESS;
+	else if (!hdcp_stat)
+		hdcp_stat = DW_HDCP_DISABLED;
+	else
+		hdcp_stat = DW_HDCP_UNKNOWN;
+
+	dw_hdmi_register_hdcp(dev, hdmi, val, hdcp1x_enable, hdcp_stat);
 
 	return 0;
 
