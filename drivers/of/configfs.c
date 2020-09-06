@@ -116,7 +116,7 @@ static ssize_t cfs_overlay_item_path_store(struct config_item *item,
 		goto out_err;
 
 	err = create_overlay(overlay, (void *)overlay->fw->data);
-	if (err < 0)
+	if (err != 0)
 		goto out_err;
 
 	return count;
@@ -189,7 +189,7 @@ ssize_t cfs_overlay_item_dtbo_write(struct config_item *item,
 	overlay->dtbo_size = count;
 
 	err = create_overlay(overlay, overlay->dtbo);
-	if (err < 0)
+	if (err != 0)
 		goto out_err;
 
 	return count;

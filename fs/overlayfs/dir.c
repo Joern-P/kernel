@@ -408,6 +408,7 @@ static int ovl_create_or_link(struct dentry *dentry, int mode, dev_t rdev,
 		err = ovl_create_upper(dentry, inode, &stat, link, hardlink);
 	} else {
 		const struct cred *old_cred, *hold_cred = NULL;
+
 		struct cred *override_cred;
 
 		old_cred = ovl_override_creds(dentry->d_sb);
@@ -415,6 +416,7 @@ static int ovl_create_or_link(struct dentry *dentry, int mode, dev_t rdev,
 		err = -ENOMEM;
 		override_cred = prepare_creds();
 		if (override_cred) {
+
 			const struct cred *our_cred;
 
 			our_cred = old_cred;

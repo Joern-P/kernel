@@ -302,9 +302,9 @@ static const struct vop_ctrl rk3288_ctrl_data = {
  */
 static const struct vop_win_data rk3288_vop_win_data[] = {
 	{ .base = 0x00, .phy = &rk3288_win01_data,
-	  .type = DRM_PLANE_TYPE_PRIMARY },
-	{ .base = 0x40, .phy = &rk3288_win01_data,
 	  .type = DRM_PLANE_TYPE_OVERLAY },
+	{ .base = 0x40, .phy = &rk3288_win01_data,
+	  .type = DRM_PLANE_TYPE_PRIMARY },
 	{ .base = 0x00, .phy = &rk3288_win23_data,
 	  .type = DRM_PLANE_TYPE_OVERLAY,
 	  .area = rk3288_area_data,
@@ -644,7 +644,7 @@ static const struct vop_data rk3399_vop_lit = {
 	.feature = VOP_FEATURE_ALPHA_SCALE,
 	.csc_table = &rk3399_csc_table,
 	.max_input = {4096, 8192},
-	.max_output = {2560, 1600},
+	.max_output = {4096, 2160},
 	.intr = &rk3366_vop_intr,
 	.ctrl = &rk3288_ctrl_data,
 	.win = rk3399_vop_lit_win_data,

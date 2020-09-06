@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/rockchip/cpu.h>
+#include <linux/hdmi-notifier.h>
 #include <linux/regmap.h>
 #include <linux/pm_runtime.h>
 #include <linux/phy/phy.h>
@@ -597,6 +598,7 @@ static void dw_hdmi_rockchip_encoder_disable(struct drm_encoder *encoder)
 	if (hdmi->phy)
 		phy_set_bus_width(hdmi->phy, 8);
 	clk_disable_unprepare(hdmi->dclk);
+	hdmi_event_disconnect(hdmi->dev);
 }
 
 static void dw_hdmi_rockchip_encoder_enable(struct drm_encoder *encoder)
@@ -668,6 +670,7 @@ static void dw_hdmi_rockchip_encoder_enable(struct drm_encoder *encoder)
 	}
 
 	clk_disable_unprepare(hdmi->grf_clk);
+	hdmi_event_connect(hdmi->dev);
 }
 
 static void

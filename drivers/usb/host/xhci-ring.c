@@ -1682,7 +1682,7 @@ static void handle_port_status(struct xhci_hcd *xhci,
 			/* Do the rest in GetPortStatus */
 		}
 	}
-
+	
 	if ((portsc & PORT_PLC) &&
 	    DEV_SUPERSPEED_ANY(portsc) &&
 	    ((portsc & PORT_PLS_MASK) == XDEV_U0 ||

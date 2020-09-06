@@ -155,7 +155,11 @@ int ovl_permission(struct inode *inode, int mask)
 
 	old_cred = ovl_override_creds(inode->i_sb);
 	err = __inode_permission(realinode, mask);
+<<<<<<< HEAD
 	ovl_revert_creds(old_cred);
+=======
+	revert_creds(old_cred);
+>>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 
 out_dput:
 	dput(alias);
@@ -292,7 +296,8 @@ static bool ovl_can_list(const char *s)
 		return true;
 
 	/* Never list trusted.overlay, list other trusted for superuser only */
-	return !ovl_is_private_xattr(s) && capable(CAP_SYS_ADMIN);
+	return !ovl_is_private_xattr(s) &&
+	       ns_capable_noaudit(&init_user_ns, CAP_SYS_ADMIN);
 }
 
 ssize_t ovl_listxattr(struct dentry *dentry, char *list, size_t size)

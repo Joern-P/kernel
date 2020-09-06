@@ -41,8 +41,12 @@ struct pwm_fan_ctx {
 static int  __set_pwm(struct pwm_fan_ctx *ctx, unsigned long pwm)
 {
 	unsigned long period;
+	struct pwm_args pargs;
+	unsigned long duty;
 	int ret = 0;
 	struct pwm_state state = { };
+
+	pwm_get_args(ctx->pwm, &pargs);
 
 	mutex_lock(&ctx->lock);
 	if (ctx->pwm_value == pwm)
@@ -52,6 +56,19 @@ static int  __set_pwm(struct pwm_fan_ctx *ctx, unsigned long pwm)
 	period = ctx->pwm->args.period;
 	state.duty_cycle = DIV_ROUND_UP(pwm * (period - 1), MAX_PWM);
 	state.enabled = pwm ? true : false;
+	duty = DIV_ROUND_UP(pwm * (pargs.period - 1), MAX_PWM);
+	ret = pwm_config(ctx->pwm, duty, pargs.period);
+	if (ret)
+		goto exit_set_pwm_err;
+
+	if (pwm == 0)
+		pwm_disable(ctx->pwm);
+
+	if (ctx->pwm_value == 0) {
+		ret = pwm_enable(ctx->pwm);
+		if (ret)
+			goto exit_set_pwm_err;
+	}
 
 	ret = pwm_apply_state(ctx->pwm, &state);
 	if (!ret)
@@ -209,6 +226,7 @@ static int pwm_fan_probe(struct platform_device *pdev)
 {
 	struct thermal_cooling_device *cdev;
 	struct pwm_fan_ctx *ctx;
+	struct pwm_args pargs;
 	struct device *hwmon;
 	int ret;
 	struct pwm_state state = { };
@@ -233,6 +251,23 @@ static int pwm_fan_probe(struct platform_device *pdev)
 	pwm_init_state(ctx->pwm, &state);
 	state.duty_cycle = ctx->pwm->args.period - 1;
 	state.enabled = true;
+	/*
+	 * FIXME: pwm_apply_args() should be removed when switching to the
+	 * atomic PWM API.
+	 */
+	pwm_apply_args(ctx->pwm);
+
+	/* Set duty cycle to maximum allowed */
+	pwm_get_args(ctx->pwm, &pargs);
+
+	duty_cycle = pargs.period - 1;
+	ctx->pwm_value = MAX_PWM;
+
+	ret = pwm_config(ctx->pwm, duty_cycle, pargs.period);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to configure PWM\n");
+		return ret;
+	}
 
 	ret = pwm_apply_state(ctx->pwm, &state);
 	if (ret) {
