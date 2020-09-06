@@ -1213,11 +1213,7 @@ static int snapshot_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		goto bad_hash_tables;
 	}
 
-<<<<<<< HEAD
-	sema_init(&s->cow_count, (cow_threshold > 0) ? cow_threshold : INT_MAX);
-=======
 	init_waitqueue_head(&s->in_progress_wait);
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 
 	s->kcopyd_client = dm_kcopyd_client_create(&dm_kcopyd_throttle);
 	if (IS_ERR(s->kcopyd_client)) {
@@ -1639,11 +1635,8 @@ static void copy_callback(int read_err, unsigned long write_err, void *context)
 		}
 		list_add(&pe->out_of_order_entry, lh);
 	}
-<<<<<<< HEAD
 	up(&s->cow_count);
-=======
 	account_end_copy(s);
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 }
 
 /*
@@ -1667,11 +1660,7 @@ static void start_copy(struct dm_snap_pending_exception *pe)
 	dest.count = src.count;
 
 	/* Hand over to kcopyd */
-<<<<<<< HEAD
-	down(&s->cow_count);
-=======
 	account_start_copy(s);
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 	dm_kcopyd_copy(s->kcopyd_client, &src, 1, &dest, 0, copy_callback, pe);
 }
 
@@ -1691,11 +1680,7 @@ static void start_full_bio(struct dm_snap_pending_exception *pe,
 	pe->full_bio = bio;
 	pe->full_bio_end_io = bio->bi_end_io;
 
-<<<<<<< HEAD
-	down(&s->cow_count);
-=======
 	account_start_copy(s);
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 	callback_data = dm_kcopyd_prepare_callback(s->kcopyd_client,
 						   copy_callback, pe);
 
