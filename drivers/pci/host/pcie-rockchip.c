@@ -266,15 +266,7 @@ struct rockchip_pcie {
 	int wait_ep;
 	struct dma_trx_obj *dma_obj;
 	struct list_head resources;
-<<<<<<< HEAD
-	struct pci_bus *root_bus;
-	struct resource *io;
-	bool pcie_really_probed;
-	int in_remove;
-	int other_rw_disabled;
-=======
 	u32	bus_scan_delay;
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 };
 
 static int bus_scan_delay = -1;
@@ -438,33 +430,22 @@ static int rockchip_pcie_rd_other_conf(struct rockchip_pcie *rockchip,
 	busdev = PCIE_ECAM_ADDR(bus->number, PCI_SLOT(devfn),
 				PCI_FUNC(devfn), where);
 
-<<<<<<< HEAD
-	if (!IS_ALIGNED(busdev, size) || rockchip->other_rw_disabled) {
-=======
 	if (bus->number > 0x1f) {
 		*val = 0;
 		return PCIBIOS_DEVICE_NOT_FOUND;
 	}
 
 	if (!IS_ALIGNED(busdev, size)) {
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 		*val = 0;
 		return PCIBIOS_BAD_REGISTER_NUMBER;
 	}
 
 	if (bus->parent->number == rockchip->root_bus_nr)
 		rockchip_pcie_cfg_configuration_accesses(rockchip,
-<<<<<<< HEAD
-				AXI_WRAPPER_CFG0);
-	else
-		rockchip_pcie_cfg_configuration_accesses(rockchip,
-				AXI_WRAPPER_CFG1);
-=======
 						AXI_WRAPPER_TYPE0_CFG);
 	else
 		rockchip_pcie_cfg_configuration_accesses(rockchip,
 						AXI_WRAPPER_TYPE1_CFG);
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 
 	if (size == 4) {
 		*val = readl(rockchip->reg_base + busdev);
@@ -490,29 +471,17 @@ static int rockchip_pcie_wr_other_conf(struct rockchip_pcie *rockchip,
 
 	busdev = PCIE_ECAM_ADDR(bus->number, PCI_SLOT(devfn),
 				PCI_FUNC(devfn), where);
-<<<<<<< HEAD
-	if (!IS_ALIGNED(busdev, size) || rockchip->other_rw_disabled)
-=======
-
 	if (bus->number > 0x1f)
 		return PCIBIOS_DEVICE_NOT_FOUND;
 	if (!IS_ALIGNED(busdev, size))
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 		return PCIBIOS_BAD_REGISTER_NUMBER;
 
 	if (bus->parent->number == rockchip->root_bus_nr)
 		rockchip_pcie_cfg_configuration_accesses(rockchip,
-<<<<<<< HEAD
-				AXI_WRAPPER_CFG0);
-	else
-		rockchip_pcie_cfg_configuration_accesses(rockchip,
-				AXI_WRAPPER_CFG1);
-=======
 						AXI_WRAPPER_TYPE0_CFG);
 	else
 		rockchip_pcie_cfg_configuration_accesses(rockchip,
 						AXI_WRAPPER_TYPE1_CFG);
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 
 	if (size == 4)
 		writel(val, rockchip->reg_base + busdev);
@@ -813,12 +782,9 @@ static int rockchip_pcie_init_port(struct rockchip_pcie *rockchip)
 		rockchip_pcie_write(rockchip, status, PCIE_RC_CONFIG_LINK_CAP);
 	}
 
-<<<<<<< HEAD
-=======
 	rockchip_pcie_cfg_configuration_accesses(rockchip,
 					AXI_WRAPPER_TYPE0_CFG);
 
->>>>>>> fd44923862132546b4f797fbe0317205afc98b84
 	return 0;
 }
 
