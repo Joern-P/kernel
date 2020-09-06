@@ -861,9 +861,10 @@
 		reset-names = "tsadc-apb";
 		rockchip,grf = <&grf>;
 		rockchip,hw-tshut-temp = <120000>;
-		pinctrl-names = "gpio", "otpout";
+		pinctrl-names = "gpio", "otpout", "sleep";
 		pinctrl-0 = <&otp_gpio>;
 		pinctrl-1 = <&otp_out>;
+		pinctrl-2 = <&otp_gpio>;
 		#thermal-sensor-cells = <1>;
 		status = "disabled";
 	};
@@ -2670,25 +2671,25 @@
 		sdmmc {
 			sdmmc_bus1: sdmmc-bus1 {
 				rockchip,pins =
-					<4 8 RK_FUNC_1 &pcfg_pull_up>;
+					<4 8 RK_FUNC_1 &pcfg_pull_up_8ma>;
 			};
 
 			sdmmc_bus4: sdmmc-bus4 {
 				rockchip,pins =
-					<4 8 RK_FUNC_1 &pcfg_pull_up>,
-					<4 9 RK_FUNC_1 &pcfg_pull_up>,
-					<4 10 RK_FUNC_1 &pcfg_pull_up>,
-					<4 11 RK_FUNC_1 &pcfg_pull_up>;
+					<4 8 RK_FUNC_1 &pcfg_pull_up_8ma>,
+					<4 9 RK_FUNC_1 &pcfg_pull_up_8ma>,
+					<4 10 RK_FUNC_1 &pcfg_pull_up_8ma>,
+					<4 11 RK_FUNC_1 &pcfg_pull_up_8ma>;
 			};
 
 			sdmmc_clk: sdmmc-clk {
 				rockchip,pins =
-					<4 12 RK_FUNC_1 &pcfg_pull_none>;
+					<4 12 RK_FUNC_1 &pcfg_pull_none_12ma>;
 			};
 
 			sdmmc_cmd: sdmmc-cmd {
 				rockchip,pins =
-					<4 13 RK_FUNC_1 &pcfg_pull_up>;
+					<4 13 RK_FUNC_1 &pcfg_pull_up_8ma>;
 			};
 
 			sdmmc_cd: sdmcc-cd {
@@ -2698,7 +2699,7 @@
 
 			sdmmc_wp: sdmmc-wp {
 				rockchip,pins =
-					<0 8 RK_FUNC_1 &pcfg_pull_up>;
+					<0 8 RK_FUNC_1 &pcfg_pull_up_8ma>;
 			};
 		};
 
