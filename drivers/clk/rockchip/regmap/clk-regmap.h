@@ -31,17 +31,30 @@ struct clk_pll_data {
 	const char *name;
 	const char *parent_name;
 	u32 reg;
+	u8 pd_shift;
+	u8 dsmpd_shift;
+	u8 lock_shift;
 	unsigned long flags;
 };
 
-#define PLL(_id, _name, _parent_name, _reg, _flags) \
+#define PLL(_id, _name, _parent_name, _reg, _pd_shift, _dsmpd_shift, \
+	    _lock_shift, _flags) \
 { \
 	.id = _id, \
 	.name = _name, \
 	.parent_name = _parent_name, \
 	.reg = _reg, \
+	.pd_shift = _pd_shift, \
+	.dsmpd_shift = _dsmpd_shift, \
+	.lock_shift = _lock_shift, \
 	.flags = _flags, \
 }
+
+#define RK618_PLL(_id, _name, _parent_name, _reg, _flags) \
+	PLL(_id, _name, _parent_name, _reg, 10, 9, 15, _flags)
+
+#define RK628_PLL(_id, _name, _parent_name, _reg, _flags) \
+	PLL(_id, _name, _parent_name, _reg, 13, 12, 10, _flags)
 
 struct clk_mux_data {
 	unsigned int id;
@@ -144,6 +157,23 @@ struct clk_composite_data {
 	.flags = _flags, \
 }
 
+#define COMPOSITE_NOMUX(_id, _name, _parent_name, \
+			_div_reg, _div_shift, _div_width, \
+			_gate_reg, _gate_shift, _flags) \
+{ \
+	.id = _id, \
+	.name = _name, \
+	.parent_names = (const char *[]){ _parent_name }, \
+	.num_parents = 1, \
+	.div_reg = _div_reg, \
+	.div_shift = _div_shift, \
+	.div_width = _div_width, \
+	.div_flags = CLK_DIVIDER_HIWORD_MASK, \
+	.gate_reg = _gate_reg, \
+	.gate_shift = _gate_shift, \
+	.flags = _flags, \
+}
+
 #define COMPOSITE_NODIV(_id, _name, _parent_names, \
 			_mux_reg, _mux_shift, _mux_width, \
 			_gate_reg, _gate_shift, _flags) \
@@ -164,6 +194,20 @@ struct clk_composite_data {
 	.mux_reg = _mux_reg, \
 	.mux_shift = _mux_shift, \
 	.mux_width = _mux_width, \
+	.div_reg = _div_reg, \
+	.gate_reg = _gate_reg, \
+	.gate_shift = _gate_shift, \
+	.flags = _flags, \
+}
+
+#define COMPOSITE_FRAC_NOMUX(_id, _name, _parent_name, \
+			     _div_reg, \
+			     _gate_reg, _gate_shift, _flags) \
+{ \
+	.id = _id, \
+	.name = _name, \
+	.parent_names = (const char *[]){ _parent_name }, \
+	.num_parents = 1, \
 	.div_reg = _div_reg, \
 	.gate_reg = _gate_reg, \
 	.gate_shift = _gate_shift, \
@@ -225,7 +269,8 @@ extern const struct clk_ops clk_regmap_fractional_divider_ops;
 struct clk *
 devm_clk_regmap_register_pll(struct device *dev, const char *name,
 			     const char *parent_name,
-			     struct regmap *regmap, u32 reg,
+			     struct regmap *regmap, u32 reg, u8 pd_shift,
+			     u8 dsmpd_shift, u8 lock_shift,
 			     unsigned long flags);
 
 struct clk *
