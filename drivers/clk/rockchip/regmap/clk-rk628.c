@@ -116,7 +116,7 @@ static const struct clk_gate_data rk628_clk_gates[] = {
 
 	GATE(CGU_PCLK_TXPHY_CON, CNAME("pclk_txphy_con"), CNAME("pclk_logic"),
 	     CRU_GATE_CON02, 3,
-	     0),
+	     CLK_IGNORE_UNUSED),
 	GATE(CGU_PCLK_EFUSE, CNAME("pclk_efuse"), CNAME("pclk_logic"),
 	     CRU_GATE_CON00, 5,
 	     0),
@@ -483,11 +483,34 @@ static int rk628_cru_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* clock switch */
+	/* clock switch and first set gpll almost 99MHz */
+	regmap_write(cru->regmap, CRU_GPLL_CON0, 0xffff701d);
+	usleep_range(1000, 1100);
+	/* set clk_gpll_mux from gpll */
 	regmap_write(cru->regmap, CRU_MODE_CON, 0xffff0004);
-	regmap_write(cru->regmap, CRU_CLKSEL_CON00, 0xffff0b8b);
+	usleep_range(1000, 1100);
+	/* set pclk_logic from clk_gpll_mux and set pclk div 4 */
+	regmap_write(cru->regmap, CRU_CLKSEL_CON00, 0xff0080);
+	regmap_write(cru->regmap, CRU_CLKSEL_CON00, 0xff0083);
+	/* set cpll almost 400MHz */
+	regmap_write(cru->regmap, CRU_CPLL_CON0, 0xffff3063);
+	usleep_range(1000, 1100);
+	/* set clk_cpll_mux from clk_cpll */
 	regmap_write(cru->regmap, CRU_MODE_CON, 0xffff0005);
-	regmap_write(cru->regmap, CRU_CLKSEL_CON00, 0xffff0b0b);
+	/* set pclk use cpll, now div is 4 */
+	regmap_write(cru->regmap, CRU_CLKSEL_CON00, 0xff0003);
+	/* set pclk use cpll, now div is 12 */
+	regmap_write(cru->regmap, CRU_CLKSEL_CON00, 0xff000b);
+	/* gpll 983.04MHz */
+	regmap_write(cru->regmap, CRU_GPLL_CON0, 0xffff1028);
+	usleep_range(1000, 1100);
+	/* set pclk use gpll, nuw div is 0xb */
+	regmap_write(cru->regmap, CRU_CLKSEL_CON00, 0xff008b);
+	/* set cpll 1188MHz */
+	regmap_write(cru->regmap, CRU_CPLL_CON0, 0xffff1063);
+	usleep_range(1000, 1100);
+	/* set pclk use cpll, and set pclk 99MHz */
+	regmap_write(cru->regmap, CRU_CLKSEL_CON00, 0xff000b);
 
 	clk_table = devm_kcalloc(dev, CGU_NR_CLKS, sizeof(struct clk *),
 				 GFP_KERNEL);
