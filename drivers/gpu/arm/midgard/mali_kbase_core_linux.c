@@ -1173,6 +1173,7 @@ static int kbase_open(struct inode *inode, struct file *filp)
 	init_waitqueue_head(&kctx->event_queue);
 	filp->f_mode |= FMODE_UNSIGNED_OFFSET;
 	filp->private_data = kctx;
+	filp->f_mode |= FMODE_UNSIGNED_OFFSET;
 	kctx->filp = filp;
 
 	if (kbdev->infinite_cache_active_default)
