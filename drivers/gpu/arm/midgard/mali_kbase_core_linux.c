@@ -4859,6 +4859,7 @@ static const struct dev_pm_ops kbase_pm_ops = {
 static const struct of_device_id kbase_dt_ids[] = {
 	{ .compatible = "arm,malit7xx" },
 	{ .compatible = "arm,mali-midgard" },
+	{ .compatible = "arm,malit860" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, kbase_dt_ids);
