@@ -649,6 +649,7 @@
 	vdd_gpu: syr828@41 {
 		compatible = "silergy,syr828";
 		reg = <0x41>;
+		vin-supply = <&vcc3v3_sys>;
 		regulator-compatible = "fan53555-reg";
 		pinctrl-names = "default";
 		pinctrl-0 = <&vsel2_gpio>;
@@ -656,14 +657,12 @@
 		regulator-name = "vdd_gpu";
 		regulator-min-microvolt = <712500>;
 		regulator-max-microvolt = <1500000>;
-		regulator-enable-ramp-delay = <300>;
 		regulator-ramp-delay = <1000>;
 		fcs,suspend-voltage-selector = <1>;
 		regulator-always-on;
 		regulator-boot-on;
-		vin-supply = <&vcc3v3_sys>;
-		regulator-initial-mode = <1>; /* 1:force PWM 2:auto */
-		regulator-state-mem {
+		regulator-initial-state = <3>;
+			regulator-state-mem {
 			regulator-off-in-suspend;
 		};
 	};
@@ -1077,7 +1076,8 @@
 };
 
 &sdio0 {
-	max-frequency = <200000000>;
+	clock-frequency = <150000000>;
+	clock-freq-min-max = <100000 150000000>;
 	supports-sdio;
 	bus-width = <4>;
 	disable-wp;
@@ -1090,11 +1090,12 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdio0_bus4 &sdio0_cmd &sdio0_clk>;
 	sd-uhs-sdr104;
-	defer_pcie = <3500>;
 	status = "okay";
 };
 
 &sdmmc {
+	clock-frequency = <150000000>;
+	clock-freq-min-max = <100000 150000000>;
 	supports-sd;
 	bus-width = <4>;
 	cap-mmc-highspeed;
