@@ -236,7 +236,7 @@ struct inno_hdmi_phy_drv_data {
  * the actual tmds clock we get is 110.93719 Mhz. It is important
  * to note that RK322X platforms do not support frac div.
  */
-  static const struct pre_pll_config pre_pll_cfg_table[] = {
+static const struct pre_pll_config pre_pll_cfg_table[] = {
 	{ 27000000,  27000000, 1,  90, 3, 2, 2, 10, 3, 3,  4, 0, 0},
 	{ 27000000,  33750000, 1,  90, 1, 3, 3, 10, 3, 3,  4, 0, 0},
 	{ 40000000,  40000000, 1,  80, 2, 2, 2, 12, 2, 2,  2, 0, 0},
