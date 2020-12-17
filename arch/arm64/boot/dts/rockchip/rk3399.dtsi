@@ -1401,8 +1401,6 @@
 		interrupt-names = "vpu_mmu";
 		clocks = <&cru ACLK_VCODEC>, <&cru HCLK_VCODEC>;
 		clock-names = "aclk", "hclk";
-		assigned-clocks = <&cru ACLK_VCODEC_PRE>;
-       assigned-clock-parents = <&cru PLL_GPLL>;
 		power-domains = <&power RK3399_PD_VCODEC>;
 		#iommu-cells = <0>;
 	};
@@ -1419,10 +1417,6 @@
 			 <&cru SCLK_VDU_CA>, <&cru SCLK_VDU_CORE>;
 		clock-names = "aclk_vcodec", "hclk_vcodec",
 			      "clk_cabac", "clk_core";
-        assigned-clocks = <&cru ACLK_VDU_PRE>, <&cru SCLK_VDU_CA>,
-             <&cru SCLK_VDU_CORE>;
-        assigned-clock-parents = <&cru PLL_NPLL>, <&cru PLL_NPLL>,
-             <&cru PLL_NPLL>;
 		resets = <&cru SRST_H_VDU>, <&cru SRST_A_VDU>,
 			<&cru SRST_VDU_CORE>, <&cru SRST_VDU_CA>,
 			<&cru SRST_A_VDU_NOC>, <&cru SRST_H_VDU_NOC>;
