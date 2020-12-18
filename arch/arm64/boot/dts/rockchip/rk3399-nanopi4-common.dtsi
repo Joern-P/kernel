@@ -63,6 +63,19 @@
 		compatible = "mmio-sram";
 		reg = <0x0 0xff8d0000 0x0 0x20000>; /* 128k */
 	};
+	
+	ion {
+		compatible = "rockchip,ion";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cma-heap {
+			reg = <0x00000000 0x02000000>;
+		};
+
+		system-heap {
+		};
+	};
 
 	chosen {
 		bootargs = "earlycon=uart8250,mmio32,0xff1a0000 swiotlb=1 console=ttyFIQ0 rootwait coherent_pool=1m";
