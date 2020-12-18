@@ -559,6 +559,10 @@
 	status = "okay";
 };
 
+&vpu_mmu {
+	status = "okay";
+};
+
 &vpu {
 	status = "okay";
 	/* 0 means ion, 1 means drm */
