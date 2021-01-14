@@ -2684,8 +2684,12 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 							       def_modes,
 							       31, i);
 			if (mode) {
-				if (def_modes[i] == hdmi->preferred_mode)
-					mode->type |= DRM_MODE_TYPE_PREFERRED;
+
+				if (!i) {
+					mode->type = DRM_MODE_TYPE_PREFERRED;
+					mode->picture_aspect_ratio =
+						HDMI_PICTURE_ASPECT_NONE;
+				}
 				drm_mode_probed_add(connector, mode);
 				ret++;
 			}

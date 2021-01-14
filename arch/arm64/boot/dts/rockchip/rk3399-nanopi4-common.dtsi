@@ -539,7 +539,7 @@
 };
 
 &rga {
-    compatible = "rockchip,rga2";
+    	compatible = "rockchip,rga2";
 	dev_mode = <1>;
 	reg = <0x0 0xff680000 0x0 0x1000>;
 	interrupts = <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH 0>;
