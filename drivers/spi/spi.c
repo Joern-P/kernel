@@ -673,12 +673,10 @@ static void spi_set_cs(struct spi_device *spi, bool enable)
 	if (spi->mode & SPI_CS_HIGH)
 		enable = !enable;
 
-	if (gpio_is_valid(spi->cs_gpio)) {
+	if (gpio_is_valid(spi->cs_gpio))
 		gpio_set_value(spi->cs_gpio, !enable);
+	else if (spi->master->set_cs)
 		spi->master->set_cs(spi, !enable);
-	} else {
-		spi->master->set_cs(spi, !enable);
-	}
 }
 
 #ifdef CONFIG_HAS_DMA
@@ -2717,4 +2715,5 @@ err0:
  * include needing to have boardinfo data structures be much more public.
  */
 postcore_initcall(spi_init);
+
 
